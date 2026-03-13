@@ -14,7 +14,7 @@ import time
 LAUNCHER_VERSION = "1.0.0"
 
 # GitHub raw URLs — update GITHUB_REPO to your actual repo path
-GITHUB_REPO      = "Nelku0/PERSPECTIVEPRODUCTIONS.UK"  # e.g. "YourUser/tung-tung-run"
+GITHUB_REPO      = "nelkux2/MainTungSahur"  # e.g. "YourUser/tung-tung-run"
 GITHUB_BRANCH    = "main"
 GITHUB_RAW       = f"https://raw.githubusercontent.com/{GITHUB_REPO}/{GITHUB_BRANCH}"
 
