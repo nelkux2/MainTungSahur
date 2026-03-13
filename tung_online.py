@@ -11,7 +11,7 @@ import sys, os, json, urllib.request, urllib.parse, urllib.error
 import time
 
 # ── Version & update config ───────────────────────────────────────────
-LAUNCHER_VERSION = "2.0.0"
+LAUNCHER_VERSION = "2.5.0"
 
 # GitHub raw URLs — update GITHUB_REPO to your actual repo path
 GITHUB_REPO      = "nelkux2/MainTungSahur"  # e.g. "YourUser/tung-tung-run"
@@ -273,6 +273,7 @@ class OnlinePlayerManager:
         "high_score": 0, "total_score": 0, "coins": 0,
         "current_weapon": "none",  "owned_weapons":   [],
         "current_ability": "slam", "owned_abilities": [],
+        "current_skin": "default", "owned_skins":     [],
         "battle_pass": None,
     }
 
@@ -375,6 +376,8 @@ class OnlinePlayerManager:
                 "owned_weapons":    body.get("ownedWeapons", []),
                 "current_ability":  body.get("currentAbility", "slam"),
                 "owned_abilities":  body.get("ownedAbilities", []),
+                "current_skin":     body.get("currentSkin", "default"),
+                "owned_skins":      body.get("ownedSkins", []),
                 "battle_pass":      body.get("battlePass", None),
             }
 
@@ -387,6 +390,8 @@ class OnlinePlayerManager:
             "ownedWeapons":    self._cache.get("owned_weapons", []),
             "currentAbility":  self._cache.get("current_ability", "slam"),
             "ownedAbilities":  self._cache.get("owned_abilities", []),
+            "currentSkin":     self._cache.get("current_skin", "default"),
+            "ownedSkins":      self._cache.get("owned_skins", []),
             "battlePass":      self._cache.get("battle_pass", None),
         }
         _api("PUT", "/players/me/data", data=payload, params={"token": self._token})
@@ -400,6 +405,8 @@ class OnlinePlayerManager:
             rec = dict(self._DEF)
         rec.setdefault("owned_abilities", [])
         rec.setdefault("current_ability", "slam")
+        rec.setdefault("owned_skins", [])
+        rec.setdefault("current_skin", "default")
         rec.setdefault("battle_pass", None)
         rec.setdefault("owned_weapons", [])
         rec.setdefault("current_weapon", "none")
@@ -466,6 +473,10 @@ class OnlinePlayerManager:
             key = tier["reward_val"]
             if key not in rec.get("owned_abilities", []):
                 rec.setdefault("owned_abilities", []).append(key)
+        elif tier["reward_type"] == "skin":
+            key = tier["reward_val"]
+            if key not in rec.get("owned_skins", []):
+                rec.setdefault("owned_skins", []).append(key)
         if self._is_online:
             self._cache.update(rec)
             self._cache["battle_pass"] = bp
@@ -529,6 +540,17 @@ class OnlinePlayerManager:
                 self._offline_db["players"][self.current_user]["current_ability"] = key
                 self._save_offline()
 
+    def equip_skin(self, key):
+        rec = self.current()
+        if key == "default" or key in rec.get("owned_skins", []):
+            rec["current_skin"] = key
+            if self._is_online:
+                self._cache["current_skin"] = key
+                self._push_cache()
+            elif self.current_user:
+                self._offline_db["players"][self.current_user]["current_skin"] = key
+                self._save_offline()
+
     def leaderboard(self):
         if self._is_online:
             ok, body = _api("GET", "/leaderboard", params={"limit": 20})
@@ -543,6 +565,122 @@ class OnlinePlayerManager:
         ]
         rows.sort(key=lambda r: r[1], reverse=True)
         return rows
+
+
+    def get_friends(self):
+        if self._is_online and self._token:
+            ok, body = _api("GET", "/friends", params={"token": self._token})
+            if ok:
+                return body
+        return {"friends": [], "sent": [], "received": []}
+
+    def send_friend_request(self, username):
+        if self._is_online and self._token:
+            ok, body = _api("POST", "/friends/request",
+                            data={"token": self._token, "username": username})
+            return ok, body.get("error", body.get("status", "ok"))
+        return False, "Friends require an online connection."
+
+    def accept_friend(self, username):
+        if self._is_online and self._token:
+            ok, body = _api("POST", "/friends/accept",
+                            data={"token": self._token, "username": username})
+            return ok, body.get("error", "ok")
+        return False, "Offline."
+
+    def decline_friend(self, username):
+        if self._is_online and self._token:
+            ok, body = _api("POST", "/friends/decline",
+                            data={"token": self._token, "username": username})
+            return ok, body.get("error", "ok")
+        return False, "Offline."
+
+    def remove_friend(self, username):
+        if self._is_online and self._token:
+            ok, body = _api("POST", "/friends/remove",
+                            data={"token": self._token, "username": username})
+            return ok, body.get("error", "ok")
+        return False, "Offline."
+
+    # ── Messages ─────────────────────────────────────────────────────
+    def get_messages(self, other_user):
+        if self._is_online and self._token:
+            ok, body = _api("GET", "/messages",
+                            params={"token": self._token, "with": other_user})
+            if ok and isinstance(body, list):
+                return body
+        return []
+
+    def send_message(self, to_user, text):
+        if self._is_online and self._token:
+            ok, body = _api("POST", "/messages",
+                            data={"token": self._token, "to": to_user, "text": text})
+            return ok, body.get("error", "ok")
+        return False, "Offline — messaging requires a connection."
+
+    # ── Duels ─────────────────────────────────────────────────────────
+    def duel_create(self):
+        if self._is_online and self._token:
+            ok, body = _api("POST", "/duels/create", data={"token": self._token})
+            if ok:
+                return body.get("id")
+        return None
+
+    def duel_join(self, lobby_id):
+        if self._is_online and self._token:
+            ok, body = _api("POST", "/duels/join",
+                            data={"token": self._token, "id": lobby_id})
+            if ok:
+                return body.get("lobby")
+        return None
+
+    def duel_get(self, lobby_id):
+        if self._is_online and self._token:
+            ok, body = _api("GET", f"/duels/{lobby_id}",
+                            params={"token": self._token})
+            if ok:
+                return body
+        return None
+
+    def duel_set_role(self, lobby_id, role):
+        if self._is_online and self._token:
+            ok, body = _api("POST", f"/duels/{lobby_id}/role",
+                            data={"token": self._token, "role": role})
+            return ok, body
+        return False, {}
+
+    def duel_start(self, lobby_id):
+        if self._is_online and self._token:
+            ok, body = _api("POST", f"/duels/{lobby_id}/start",
+                            data={"token": self._token})
+            return ok
+        return False
+
+    def duel_push_state(self, lobby_id, state):
+        if self._is_online and self._token:
+            _api("POST", f"/duels/{lobby_id}/state",
+                 data={"token": self._token, **state})
+
+    def duel_get_state(self, lobby_id):
+        if self._is_online and self._token:
+            ok, body = _api("GET", f"/duels/{lobby_id}/state",
+                            params={"token": self._token})
+            if ok:
+                return body
+        return None
+
+    def duel_push_input(self, lobby_id, inp):
+        if self._is_online and self._token:
+            _api("POST", f"/duels/{lobby_id}/input",
+                 data={"token": self._token, **inp})
+
+    def duel_get_input(self, lobby_id):
+        if self._is_online and self._token:
+            ok, body = _api("GET", f"/duels/{lobby_id}/input",
+                            params={"token": self._token})
+            if ok:
+                return body
+        return {"left": False, "right": False, "jump": False}
 
 
 # ── Patch and launch ──────────────────────────────────────────────────

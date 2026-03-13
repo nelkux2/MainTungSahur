@@ -65,17 +65,33 @@ ABILITIES = {
 
 # Battle Pass: 10 tiers, resets every 7 days
 BP_TIERS = [
-    {"xp_needed":  300, "reward_type": "coins",   "reward_val":  60,            "label": "60 Coins"},
-    {"xp_needed":  600, "reward_type": "coins",   "reward_val": 120,            "label": "120 Coins"},
-    {"xp_needed": 1000, "reward_type": "ability", "reward_val": "triple_jump",  "label": "Triple Jump"},
-    {"xp_needed": 1400, "reward_type": "coins",   "reward_val": 200,            "label": "200 Coins"},
-    {"xp_needed": 1900, "reward_type": "coins",   "reward_val": 280,            "label": "280 Coins"},
-    {"xp_needed": 2500, "reward_type": "ability", "reward_val": "speed_slam",   "label": "Speed Slam"},
-    {"xp_needed": 3200, "reward_type": "coins",   "reward_val": 380,            "label": "380 Coins"},
-    {"xp_needed": 4000, "reward_type": "coins",   "reward_val": 500,            "label": "500 Coins"},
-    {"xp_needed": 5000, "reward_type": "ability", "reward_val": "balloon",      "label": "Balloon"},
-    {"xp_needed": 6200, "reward_type": "coins",   "reward_val": 1000,           "label": "1000 Coins"},
+    {"xp_needed":  200, "reward_type": "skin",    "reward_val": "neon",         "label": "Neon Skin"},
+    {"xp_needed":  500, "reward_type": "coins",   "reward_val": 100,            "label": "100 Coins"},
+    {"xp_needed":  900, "reward_type": "skin",    "reward_val": "crimson",      "label": "Crimson Skin"},
+    {"xp_needed": 1400, "reward_type": "ability", "reward_val": "triple_jump",  "label": "Triple Jump"},
+    {"xp_needed": 2000, "reward_type": "skin",    "reward_val": "ice",          "label": "Ice Skin"},
+    {"xp_needed": 2700, "reward_type": "ability", "reward_val": "speed_slam",   "label": "Speed Slam"},
+    {"xp_needed": 3500, "reward_type": "skin",    "reward_val": "ghost",        "label": "Ghost Skin"},
+    {"xp_needed": 4500, "reward_type": "ability", "reward_val": "balloon",      "label": "Balloon"},
+    {"xp_needed": 5500, "reward_type": "skin",    "reward_val": "toxic",        "label": "Toxic Skin"},
+    {"xp_needed": 7000, "reward_type": "skin",    "reward_val": "golden",       "label": "Golden Skin"},
+    {"xp_needed": 9000, "reward_type": "skin",    "reward_val": "shadow",       "label": "Shadow Skin"},
 ]
+
+# ── Skins ─────────────────────────────────────────────────────
+# color = fallback pygame color if PNG not cached
+# glow  = glow color when not slamming
+# pg_color = hex for UI
+SKINS = {
+    "default": {"name": "Default", "color": (255,  31, 110), "pg_color": "#ff1f6e"},
+    "neon":    {"name": "Neon",    "color": ( 57, 255, 180), "pg_color": "#39ffb4"},
+    "ghost":   {"name": "Ghost",   "color": (200, 200, 255), "pg_color": "#c8c8ff"},
+    "golden":  {"name": "Golden",  "color": (255, 215,   0), "pg_color": "#ffd700"},
+    "crimson": {"name": "Crimson", "color": (220,  20,  60), "pg_color": "#dc143c"},
+    "ice":     {"name": "Ice",     "color": (135, 206, 250), "pg_color": "#87cefa"},
+    "toxic":   {"name": "Toxic",   "color": (127, 255,   0), "pg_color": "#7fff00"},
+    "shadow":  {"name": "Shadow",  "color": ( 80,  20, 120), "pg_color": "#501478"},
+}
 
 C = {
     "bg": "#07000f", "bg2": "#0d001e", "bg3": "#120028",
@@ -123,6 +139,7 @@ class PlayerManager:
         "high_score": 0, "total_score": 0, "coins": 0,
         "current_weapon": "none",  "owned_weapons":   [],
         "current_ability": "slam", "owned_abilities": [],
+        "current_skin": "default", "owned_skins":     [],
         "battle_pass": None,
     }
 
@@ -208,6 +225,10 @@ class PlayerManager:
             key = tier["reward_val"]
             if key not in rec["owned_abilities"]:
                 rec["owned_abilities"].append(key)
+        elif tier["reward_type"] == "skin":
+            key = tier["reward_val"]
+            if key not in rec.get("owned_skins", []):
+                rec.setdefault("owned_skins", []).append(key)
         self._save()
         return True, tier["label"]
 
@@ -257,6 +278,12 @@ class PlayerManager:
             rec["current_ability"] = key
             self._save()
 
+    def equip_skin(self, key):
+        rec = self.current()
+        if key == "default" or key in rec.get("owned_skins", []):
+            rec["current_skin"] = key
+            self._save()
+
     def leaderboard(self):
         rows = [
             (n, r.get("high_score", 0), r.get("total_score", 0))
@@ -264,6 +291,24 @@ class PlayerManager:
         ]
         rows.sort(key=lambda r: r[1], reverse=True)
         return rows
+
+    def get_friends(self):
+        return {"friends": [], "sent": [], "received": []}
+    def send_friend_request(self, u): return False, "Friends require an online connection."
+    def accept_friend(self, u):       return False, "Offline."
+    def decline_friend(self, u):      return False, "Offline."
+    def remove_friend(self, u):       return False, "Offline."
+    def get_messages(self, u):        return []
+    def send_message(self, u, t):     return False, "Offline."
+    def duel_create(self):            return None
+    def duel_join(self, i):           return None
+    def duel_get(self, i):            return None
+    def duel_set_role(self, i, r):    return False, {}
+    def duel_start(self, i):          return False
+    def duel_push_state(self, i, s):  pass
+    def duel_get_state(self, i):      return None
+    def duel_push_input(self, i, inp):pass
+    def duel_get_input(self, i):      return {"left": False, "right": False, "jump": False}
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -375,9 +420,11 @@ class StarField:
 #  PYGAME GAME
 # ══════════════════════════════════════════════════════════════════════
 class PygameGame:
-    def __init__(self, weapon_key, ability_key):
+    def __init__(self, weapon_key, ability_key, skin_key="default", is_rank1=False):
         self.weapon_key  = weapon_key
         self.ability_key = ability_key
+        self.skin_key    = skin_key
+        self._is_rank1   = is_rank1
         self.score       = 0
         self.coins_col   = 0
         self.elapsed     = 0.0
@@ -562,6 +609,17 @@ class PygameGame:
     # ── Tung AI ──────────────────────────────────────────────────────
     def _tung_ai(self, dt, now):
         if now < self.tung_stun: return
+        # Duel mode: human controls Tung
+        duel_inp = getattr(self, "_duel_inp", None)
+        if duel_inp:
+            if duel_inp.get("left") and not duel_inp.get("right"):
+                self.tung_wx -= TUNG_BASE_SPD * 1.1 * dt
+            elif duel_inp.get("right") and not duel_inp.get("left"):
+                self.tung_wx += TUNG_BASE_SPD * 1.1 * dt
+            if duel_inp.get("jump") and self.tung_on_gnd and self.tung_jc == 0:
+                self.tung_vy = JUMP_V * 0.88
+                self.tung_jc = 1
+            return
         gap   = PLAYER_SX - self.tung_sx
         extra = max(0.0, (gap - TUNG_GAP_IDL) * TUNG_GAP_K)
         spd   = min(TUNG_MAX_SPD, self.tung_spd + extra)
@@ -797,15 +855,24 @@ class PygameGame:
         # Player glow
         pcx = PLAYER_SX
         pcy = int(self.p_y + PLAYER_H / 2)
-        gcl = PG["p_slam"] if self.p_slam else PG["pink"]
+        _skin = SKINS.get(self.skin_key, SKINS["default"])
+        _skin_clr = _skin["color"]
+        gcl = PG["p_slam"] if self.p_slam else _skin_clr
         gr  = int((PLAYER_W + 12) * (0.85 + 0.15 * math.sin(now * 9)))
         gsu = pygame.Surface((gr * 2, gr * 2), pygame.SRCALPHA)
         pygame.draw.ellipse(gsu, (*gcl, 75), gsu.get_rect())
         surf.blit(gsu, (pcx - gr, pcy - gr))
 
-        # Player body
-        bcl = PG["p_slam"] if self.p_slam else PG["player"]
+        # Player body — colored rect using current skin
+        bcl = PG["p_slam"] if self.p_slam else _skin_clr
         pygame.draw.rect(surf, bcl, self.p_rect, border_radius=5)
+
+        # Crown — drawn on top of player if they are #1 on leaderboard
+        if assets.get("crown") and getattr(self, "_is_rank1", False):
+            crown = assets["crown"]
+            cx = PLAYER_SX - crown.get_width() // 2
+            cy = int(self.p_y) - crown.get_height() - 2
+            surf.blit(crown, (cx, cy))
 
         # Tung
         stun_now = now < self.tung_stun
@@ -930,6 +997,16 @@ def _load_assets():
             except Exception:
                 pass
 
+    # Crown for #1 player
+    for crown_name in ("Crown.png", "crown.png", "Crown.PNG"):
+        if os.path.exists(crown_name):
+            try:
+                raw = pygame.image.load(crown_name).convert_alpha()
+                assets["crown"] = pygame.transform.smoothscale(raw, (36, 24))
+                break
+            except Exception:
+                pass
+
     for k, sz, bold in [("font_lg", 30, True), ("font_md", 20, True),
                         ("font_hud", 16, True), ("font_sm", 13, False)]:
         for fam in ("Courier New", "Courier", "monospace", None):
@@ -954,14 +1031,15 @@ def _draw_pause(surf, assets):
     surf.blit(t2, (WIN_W // 2 - t2.get_width() // 2, by + 108))
 
 
-def run_pygame_game(weapon_key, ability_key):
+def run_pygame_game(weapon_key, ability_key, skin_key="default", is_rank1=False, duel_sync=None):
     pygame.init()
     pygame.display.set_caption("Tung Tung Sahur — RUN!")
     screen = pygame.display.set_mode((WIN_W, WIN_H))
     clock  = pygame.time.Clock()
     assets = _load_assets()
-    game   = PygameGame(weapon_key, ability_key)
+    game   = PygameGame(weapon_key, ability_key, skin_key, is_rank1=is_rank1)
     paused = False
+    _last_net = 0.0
 
     while True:
         dt  = min(clock.tick(60) / 1000.0, 0.05)
@@ -984,8 +1062,27 @@ def run_pygame_game(weapon_key, ability_key):
                     game.key_up(event.key)
 
         if not paused:
+            # Duel: apply Tung inputs from network and push game state
+            if duel_sync and now - _last_net > 0.12:
+                inp = duel_sync.get_input()
+                game._duel_inp = inp
+                plat_data = [[p.world_x - game.camera_x, p.y, p.half_w, p.is_temp]
+                             for p in game.platforms[-12:]]
+                duel_sync.push_state({
+                    "cam_x":    game.camera_x,
+                    "p_y":      game.p_y,
+                    "tung_sx":  game.tung_sx,
+                    "tung_y":   game.tung_y,
+                    "score":    game.score,
+                    "dead":     game.dead,
+                    "plats":    plat_data,
+                })
+                _last_net = now
             game.update(dt, now)
             if game.dead:
+                if duel_sync:
+                    duel_sync.push_state({"dead": True, "tung_won": False,
+                                          "cam_x":0,"p_y":0,"tung_sx":0,"tung_y":0,"score":game.score,"plats":[]})
                 pygame.quit()
                 return game.score, game.coins_col, int(game.elapsed * SCROLL_SPD / 100)
 
@@ -1087,7 +1184,7 @@ class SignupFrame(ctk.CTkFrame):
 
 
 class MainMenuFrame(ctk.CTkFrame):
-    def __init__(self, parent, pm, on_play, on_shop, on_locker, on_bp, on_lb, on_logout, on_quit):
+    def __init__(self, parent, pm, on_play, on_shop, on_locker, on_bp, on_lb, on_friends, on_messages, on_duel, on_logout, on_quit):
         super().__init__(parent, fg_color=C["bg"], corner_radius=0)
         self.columnconfigure(0, weight=1)
         for r in range(18): self.rowconfigure(r, weight=1)
@@ -1134,18 +1231,44 @@ class MainMenuFrame(ctk.CTkFrame):
                           width=190, height=42, corner_radius=8,
                           command=cmd).pack(side="left", padx=6)
 
-        ctk.CTkButton(self, text="LEADERBOARD", font=_font(14, "bold"),
+        # Pending friend requests badge
+        fd = pm.get_friends()
+        pending = len(fd.get("received", []))
+        friends_txt = f"FRIENDS  [{pending}]" if pending else "FRIENDS"
+
+        br_lb = ctk.CTkFrame(self, fg_color="transparent")
+        br_lb.grid(row=7, column=0, pady=4)
+        ctk.CTkButton(br_lb, text="LEADERBOARD", font=_font(13, "bold"),
                       fg_color=C["bg3"], hover_color=C["btn_hover"],
                       text_color="#9040c0", border_width=1, border_color="#9040c0",
-                      width=200, height=40, corner_radius=8,
-                      command=on_lb).grid(row=7, column=0, pady=4)
+                      width=170, height=40, corner_radius=8,
+                      command=on_lb).pack(side="left", padx=4)
+        ctk.CTkButton(br_lb, text=friends_txt, font=_font(13, "bold"),
+                      fg_color=C["bg3"], hover_color=C["btn_hover"],
+                      text_color=C["gold"] if pending else C["teal"],
+                      border_width=1, border_color=C["gold"] if pending else C["teal"],
+                      width=160, height=40, corner_radius=8,
+                      command=on_friends).pack(side="left", padx=4)
+
+        br_lb2 = ctk.CTkFrame(self, fg_color="transparent")
+        br_lb2.grid(row=8, column=0, pady=2)
+        ctk.CTkButton(br_lb2, text="MESSAGES", font=_font(13, "bold"),
+                      fg_color=C["bg3"], hover_color=C["btn_hover"],
+                      text_color=C["purple"], border_width=1, border_color=C["purple"],
+                      width=160, height=38, corner_radius=8,
+                      command=on_messages).pack(side="left", padx=4)
+        ctk.CTkButton(br_lb2, text="⚔ DUEL", font=_font(13, "bold"),
+                      fg_color=C["bg3"], hover_color=C["btn_hover"],
+                      text_color=C["pink"], border_width=1, border_color=C["pink"],
+                      width=140, height=38, corner_radius=8,
+                      command=on_duel).pack(side="left", padx=4)
 
         ctk.CTkLabel(self,
             text="WASD+Sword  ·  S+Air Slam  ·  E Platform  ·  F Gun/Mallet  ·  G Ability  ·  ESC Pause",
-            font=_font(11), text_color=C["grey"]).grid(row=8, column=0, pady=(12, 4))
+            font=_font(11), text_color=C["grey"]).grid(row=9, column=0, pady=(10, 2))
 
         br2 = ctk.CTkFrame(self, fg_color="transparent")
-        br2.grid(row=9, column=0, pady=4)
+        br2.grid(row=10, column=0, pady=4)
         _btn_ghost(br2, "LOG OUT", on_logout, width=150, border_color=C["teal"]).pack(side="left", padx=8)
         _btn_ghost(br2, "QUIT",    on_quit,   width=120, border_color=C["danger"]).pack(side="left", padx=8)
         _rule(self, C["purple"], height=2, row=17)
@@ -1333,7 +1456,7 @@ class LockerFrame(ctk.CTkFrame):
 
         body = ctk.CTkFrame(self, fg_color="transparent")
         body.grid(row=3, column=0, padx=60, sticky="ew")
-        body.columnconfigure((0, 1), weight=1)
+        body.columnconfigure((0, 1, 2), weight=1)
 
         # ── Left: Weapons ────────────────────────────────────────────
         wf = ctk.CTkFrame(body, fg_color=C["bg3"], corner_radius=12)
@@ -1344,7 +1467,7 @@ class LockerFrame(ctk.CTkFrame):
         self._wpn_frame = wf
         self._rebuild_wpn()
 
-        # ── Right: Abilities ─────────────────────────────────────────
+        # ── Middle: Abilities ────────────────────────────────────────
         af = ctk.CTkFrame(body, fg_color=C["bg3"], corner_radius=12)
         af.grid(row=0, column=1, padx=12, pady=8, sticky="nsew")
         af.columnconfigure(0, weight=1)
@@ -1352,6 +1475,15 @@ class LockerFrame(ctk.CTkFrame):
                      text_color=C["purple"]).grid(row=0, column=0, pady=(18, 8), padx=20, sticky="w")
         self._abl_frame = af
         self._rebuild_abl()
+
+        # ── Right: Skins ─────────────────────────────────────────────
+        sf = ctk.CTkFrame(body, fg_color=C["bg3"], corner_radius=12)
+        sf.grid(row=0, column=2, padx=12, pady=8, sticky="nsew")
+        sf.columnconfigure(0, weight=1)
+        ctk.CTkLabel(sf, text="SKIN", font=_font(18, "bold"),
+                     text_color=C["pink"]).grid(row=0, column=0, pady=(18, 8), padx=20, sticky="w")
+        self._skn_frame = sf
+        self._rebuild_skn()
 
         _btn_ghost(self, "BACK", on_back, width=180).grid(row=4, column=0, pady=16)
         _rule(self, C["pink"], height=2, row=13)
@@ -1415,11 +1547,27 @@ class LockerFrame(ctk.CTkFrame):
             ctk.CTkLabel(row_f, text="LOCKED", font=_font(11),
                          text_color=C["grey"]).grid(row=0, column=2, padx=12)
 
+    def _rebuild_skn(self):
+        for w in self._skn_frame.winfo_children():
+            if isinstance(w, ctk.CTkFrame): w.destroy()
+        rec = self.pm.current()
+        equipped = rec.get("current_skin", "default")
+        for ri, (key, skn) in enumerate(SKINS.items(), start=1):
+            owned = key == "default" or key in rec.get("owned_skins", [])
+            eq    = equipped == key
+            txt   = skn["name"] + ("" if owned else " 🔒")
+            clr   = skn["pg_color"]
+            self._locker_row(self._skn_frame, ri, key, txt, clr, eq,
+                             (lambda k=key: self._set_skn(k)) if owned else None)
+
     def _set_wpn(self, k):
         self.pm.equip_weapon(k); self._rebuild_wpn()
 
     def _set_abl(self, k):
         self.pm.equip_ability(k); self._rebuild_abl()
+
+    def _set_skn(self, k):
+        self.pm.equip_skin(k); self._rebuild_skn()
 
 
 class BattlePassFrame(ctk.CTkFrame):
@@ -1508,6 +1656,868 @@ class BattlePassFrame(ctk.CTkFrame):
             parent.event_generate("<<BPRefresh>>")
 
 
+
+# ── DuelNetSync — background thread for network I/O during duel ──────
+import threading as _threading
+
+class DuelNetSync:
+    """Runs network calls on a background thread to avoid blocking the game loop."""
+    def __init__(self, pm, lobby_id, role):
+        self._pm       = pm
+        self._id       = lobby_id
+        self._role     = role          # "player" or "tung"
+        self._lock     = _threading.Lock()
+        self._state    = None          # latest game state (tung reads this)
+        self._inp      = {"left": False, "right": False, "jump": False}
+        self._pending_state = None     # player sets this to push
+        self._pending_inp   = None     # tung sets this to push
+        self._running  = True
+        t = _threading.Thread(target=self._loop, daemon=True)
+        t.start()
+
+    def push_state(self, s):
+        with self._lock: self._pending_state = dict(s)
+
+    def push_input(self, inp):
+        with self._lock: self._pending_inp = dict(inp)
+
+    def get_state(self):
+        with self._lock: return self._state
+
+    def get_input(self):
+        with self._lock: return dict(self._inp)
+
+    def stop(self):
+        self._running = False
+
+    def _loop(self):
+        import time as _time
+        while self._running:
+            try:
+                if self._role == "player":
+                    with self._lock:
+                        s = self._pending_state; self._pending_state = None
+                    if s: self._pm.duel_push_state(self._id, s)
+                    inp = self._pm.duel_get_input(self._id)
+                    with self._lock: self._inp = inp or self._inp
+                else:
+                    with self._lock:
+                        inp = self._pending_inp; self._pending_inp = None
+                    if inp: self._pm.duel_push_input(self._id, inp)
+                    st = self._pm.duel_get_state(self._id)
+                    if st:
+                        with self._lock: self._state = st
+            except Exception:
+                pass
+            _time.sleep(0.12)
+
+
+class FriendsFrame(ctk.CTkFrame):
+    """Friends list — view friends, send/accept/decline requests."""
+    def __init__(self, parent, pm, on_back):
+        super().__init__(parent, fg_color=C["bg"], corner_radius=0)
+        self.pm = pm
+        self.columnconfigure(0, weight=1)
+        for r in range(16): self.rowconfigure(r, weight=1)
+        _rule(self, C["teal"], row=0)
+        ctk.CTkLabel(self, text="FRIENDS", font=_font(44, "bold"),
+                     text_color=C["teal"]).grid(row=1, column=0, pady=(24, 4))
+        add_row = ctk.CTkFrame(self, fg_color="transparent")
+        add_row.grid(row=2, column=0, pady=(4, 6))
+        self._add_entry = ctk.CTkEntry(add_row, placeholder_text="Enter username…",
+                                       width=240, height=38, font=_font(13),
+                                       fg_color=C["entry_bg"], border_color=C["teal"], border_width=1)
+        self._add_entry.pack(side="left", padx=(0, 8))
+        ctk.CTkButton(add_row, text="ADD FRIEND", font=_font(13, "bold"),
+                      fg_color=C["teal"], hover_color="#009980", text_color=C["bg"],
+                      width=130, height=38, corner_radius=8,
+                      command=self._send_request).pack(side="left")
+        self._status_lbl = ctk.CTkLabel(self, text="", font=_font(11), text_color=C["gold"])
+        self._status_lbl.grid(row=3, column=0)
+        self._scroll = ctk.CTkScrollableFrame(self, fg_color="transparent", height=360)
+        self._scroll.grid(row=4, column=0, padx=60, sticky="ew")
+        self._scroll.columnconfigure(0, weight=1)
+        _btn_ghost(self, "BACK", on_back, width=180).grid(row=5, column=0, pady=10)
+        _rule(self, C["pink"], height=2, row=15)
+        self._refresh()
+
+    def _refresh(self):
+        for w in self._scroll.winfo_children(): w.destroy()
+        data = self.pm.get_friends()
+        row = 0
+        if data.get("received"):
+            ctk.CTkLabel(self._scroll, text="FRIEND REQUESTS", font=_font(12, "bold"),
+                         text_color=C["gold"]).grid(row=row, column=0, sticky="w", pady=(8,2))
+            row += 1
+            for u in data["received"]: self._request_row(row, u); row += 1
+        friends = data.get("friends", [])
+        lbl = f"FRIENDS ({len(friends)})" if friends else "No friends yet — add one above!"
+        ctk.CTkLabel(self._scroll, text=lbl, font=_font(12, "bold"),
+                     text_color=C["teal"]).grid(row=row, column=0, sticky="w", pady=(10,2))
+        row += 1
+        for entry in friends: self._friend_row(row, entry); row += 1
+        if data.get("sent"):
+            ctk.CTkLabel(self._scroll, text="PENDING (SENT)", font=_font(12, "bold"),
+                         text_color=C["grey"]).grid(row=row, column=0, sticky="w", pady=(10,2))
+            row += 1
+            for u in data["sent"]:
+                f = ctk.CTkFrame(self._scroll, fg_color=C["bg2"], corner_radius=8)
+                f.grid(row=row, column=0, sticky="ew", pady=2); row += 1
+                f.columnconfigure(1, weight=1)
+                ctk.CTkLabel(f, text="⏳", font=_font(14)).grid(row=0, column=0, padx=(12,6), pady=8)
+                ctk.CTkLabel(f, text=u, font=_font(14), text_color=C["grey"]).grid(row=0, column=1, sticky="w")
+                ctk.CTkLabel(f, text="Waiting…", font=_font(11), text_color=C["grey"]).grid(row=0, column=2, padx=12)
+
+    def _friend_row(self, row, entry):
+        u  = entry["username"] if isinstance(entry, dict) else entry
+        hs = entry.get("highScore", 0) if isinstance(entry, dict) else 0
+        f  = ctk.CTkFrame(self._scroll, fg_color=C["bg3"], corner_radius=8)
+        f.grid(row=row, column=0, sticky="ew", pady=2)
+        f.columnconfigure(1, weight=1)
+        ctk.CTkLabel(f, text="👤", font=_font(14)).grid(row=0, column=0, padx=(12,6), pady=8)
+        ctk.CTkLabel(f, text=u, font=_font(14, "bold"), text_color=C["text"]).grid(row=0, column=1, sticky="w")
+        ctk.CTkLabel(f, text=f"🏆 {hs:,}", font=_font(12), text_color=C["pink"]).grid(row=0, column=2, padx=8)
+        ctk.CTkButton(f, text="REMOVE", font=_font(10), fg_color="transparent",
+                      hover_color=C["btn_hover"], text_color=C["danger"],
+                      border_width=1, border_color=C["danger"], width=70, height=26, corner_radius=5,
+                      command=lambda u=u: self._remove(u)).grid(row=0, column=3, padx=8)
+
+    def _request_row(self, row, username):
+        f = ctk.CTkFrame(self._scroll, fg_color=C["bg2"], corner_radius=8)
+        f.grid(row=row, column=0, sticky="ew", pady=2)
+        f.columnconfigure(1, weight=1)
+        ctk.CTkLabel(f, text="📨", font=_font(14)).grid(row=0, column=0, padx=(12,6), pady=8)
+        ctk.CTkLabel(f, text=username, font=_font(14), text_color=C["gold"]).grid(row=0, column=1, sticky="w")
+        ctk.CTkButton(f, text="ACCEPT", font=_font(10, "bold"), fg_color=C["teal"],
+                      hover_color="#009980", text_color=C["bg"], width=74, height=26, corner_radius=5,
+                      command=lambda u=username: self._accept(u)).grid(row=0, column=2, padx=4)
+        ctk.CTkButton(f, text="DECLINE", font=_font(10), fg_color="transparent",
+                      hover_color=C["btn_hover"], text_color=C["danger"],
+                      border_width=1, border_color=C["danger"], width=74, height=26, corner_radius=5,
+                      command=lambda u=username: self._decline(u)).grid(row=0, column=3, padx=(0,8))
+
+    def _send_request(self):
+        target = self._add_entry.get().strip().lower()
+        if not target: return
+        ok, msg = self.pm.send_friend_request(target)
+        self._add_entry.delete(0, "end")
+        if ok:
+            self._status_lbl.configure(text=f"✓ Request sent to {target}!", text_color=C["teal"])
+        else:
+            self._status_lbl.configure(text=f"✗ {msg}", text_color=C["danger"])
+        self.after(3000, lambda: self._status_lbl.configure(text=""))
+        self._refresh()
+
+    def _accept(self, u): self.pm.accept_friend(u); self._refresh()
+    def _decline(self, u): self.pm.decline_friend(u); self._refresh()
+    def _remove(self, u): self.pm.remove_friend(u); self._refresh()
+
+
+class MessagesFrame(ctk.CTkFrame):
+    """DM system — friends list on left, chat on right."""
+    def __init__(self, parent, pm, on_back):
+        super().__init__(parent, fg_color=C["bg"], corner_radius=0)
+        self.pm = pm
+        self._other = None
+        self._poll_id = None
+        self.columnconfigure(0, weight=0)
+        self.columnconfigure(1, weight=1)
+        for r in range(20): self.rowconfigure(r, weight=1)
+        _rule(self, C["purple"], row=0)
+        ctk.CTkLabel(self, text="MESSAGES", font=_font(36, "bold"),
+                     text_color=C["purple"]).grid(row=1, column=0, columnspan=2, pady=(18, 4))
+
+        # Left: friend list
+        lf = ctk.CTkFrame(self, fg_color=C["bg2"], corner_radius=10)
+        lf.grid(row=2, column=0, rowspan=16, padx=(40,8), pady=8, sticky="nsew")
+        lf.columnconfigure(0, weight=1)
+        ctk.CTkLabel(lf, text="FRIENDS", font=_font(12, "bold"),
+                     text_color=C["grey"]).grid(row=0, column=0, pady=(10,4), padx=12, sticky="w")
+        self._friend_list = ctk.CTkScrollableFrame(lf, fg_color="transparent", width=160, height=320)
+        self._friend_list.grid(row=1, column=0, padx=4, pady=4)
+        self._friend_list.columnconfigure(0, weight=1)
+        self._populate_friends()
+
+        # Right: chat area
+        self._chat_area = ctk.CTkScrollableFrame(self, fg_color=C["bg3"],
+                                                  corner_radius=10, height=340)
+        self._chat_area.grid(row=2, column=1, rowspan=14, padx=(8,40), pady=8, sticky="nsew")
+        self._chat_area.columnconfigure(0, weight=1)
+        self._empty_lbl = ctk.CTkLabel(self._chat_area,
+                                        text="Select a friend to start chatting",
+                                        font=_font(13), text_color=C["grey"])
+        self._empty_lbl.grid(row=0, column=0, pady=40)
+
+        # Input row
+        inp_row = ctk.CTkFrame(self, fg_color="transparent")
+        inp_row.grid(row=16, column=1, padx=(8,40), pady=(0,6), sticky="ew")
+        inp_row.columnconfigure(0, weight=1)
+        self._msg_entry = ctk.CTkEntry(inp_row, placeholder_text="Type a message…",
+                                       height=40, font=_font(13), fg_color=C["entry_bg"],
+                                       border_color=C["purple"], border_width=1)
+        self._msg_entry.grid(row=0, column=0, padx=(0,8), sticky="ew")
+        self._msg_entry.bind("<Return>", lambda e: self._send())
+        ctk.CTkButton(inp_row, text="SEND", font=_font(13, "bold"),
+                      fg_color=C["purple"], hover_color="#7010b0", text_color="white",
+                      width=80, height=40, corner_radius=8,
+                      command=self._send).grid(row=0, column=1)
+
+        _btn_ghost(self, "BACK", on_back, width=160).grid(row=17, column=0, columnspan=2, pady=8)
+
+    def _populate_friends(self):
+        for w in self._friend_list.winfo_children(): w.destroy()
+        data = self.pm.get_friends()
+        for i, entry in enumerate(data.get("friends", [])):
+            u = entry["username"] if isinstance(entry, dict) else entry
+            bg = C["equipped"] if u == self._other else C["bg3"]
+            btn = ctk.CTkButton(self._friend_list, text=u, font=_font(12),
+                                 fg_color=bg, hover_color=C["btn_hover"],
+                                 text_color=C["text"], anchor="w",
+                                 width=150, height=34, corner_radius=6,
+                                 command=lambda u=u: self._open_chat(u))
+            btn.grid(row=i, column=0, pady=2, padx=4, sticky="ew")
+
+    def _open_chat(self, username):
+        self._other = username
+        self._populate_friends()
+        if self._poll_id:
+            self.after_cancel(self._poll_id)
+        self._load_messages()
+
+    def _load_messages(self):
+        if not self._other: return
+        for w in self._chat_area.winfo_children(): w.destroy()
+        msgs = self.pm.get_messages(self._other)
+        if not msgs:
+            ctk.CTkLabel(self._chat_area, text="No messages yet — say hi!",
+                         font=_font(12), text_color=C["grey"]).grid(row=0, column=0, pady=20)
+        for i, m in enumerate(msgs):
+            is_me = m.get("from") == self.pm.current_user
+            align = "e" if is_me else "w"
+            clr   = C["teal"] if is_me else C["text"]
+            bg    = C["equipped"] if is_me else C["bg2"]
+            bubble = ctk.CTkFrame(self._chat_area, fg_color=bg, corner_radius=10)
+            bubble.grid(row=i, column=0, sticky=align, padx=12, pady=2)
+            ctk.CTkLabel(bubble, text=m.get("text",""), font=_font(13),
+                         text_color=clr, wraplength=320).pack(padx=12, pady=6)
+        # Auto-poll every 3s
+        self._poll_id = self.after(3000, self._load_messages)
+
+    def _send(self):
+        if not self._other: return
+        text = self._msg_entry.get().strip()
+        if not text: return
+        ok, err_msg = self.pm.send_message(self._other, text)
+        if ok:
+            self._msg_entry.delete(0, "end")
+            self._load_messages()
+        else:
+            self._msg_entry.delete(0, "end")
+            self._msg_entry.configure(placeholder_text=f"Error: {err_msg}")
+
+
+class DuelFrame(ctk.CTkFrame):
+    """Create or join a duel lobby."""
+    def __init__(self, parent, pm, on_back, on_lobby):
+        super().__init__(parent, fg_color=C["bg"], corner_radius=0)
+        self.pm = pm
+        self.on_lobby = on_lobby
+        self.columnconfigure(0, weight=1)
+        for r in range(14): self.rowconfigure(r, weight=1)
+        _rule(self, C["pink"], row=0)
+        ctk.CTkLabel(self, text="DUELS", font=_font(50, "bold"),
+                     text_color=C["pink"]).grid(row=1, column=0, pady=(28, 4))
+        ctk.CTkLabel(self, text="Challenge a friend — one plays as Tung!",
+                     font=_font(14), text_color=C["grey"]).grid(row=2, column=0, pady=(0, 16))
+
+        # Create lobby
+        cf = ctk.CTkFrame(self, fg_color=C["bg3"], corner_radius=12)
+        cf.grid(row=3, column=0, padx=160, pady=8, sticky="ew")
+        cf.columnconfigure(0, weight=1)
+        ctk.CTkLabel(cf, text="CREATE LOBBY", font=_font(18, "bold"),
+                     text_color=C["teal"]).grid(row=0, column=0, pady=(16,4))
+        ctk.CTkLabel(cf, text="Share the code with a friend to start a duel.",
+                     font=_font(12), text_color=C["grey"]).grid(row=1, column=0, pady=(0,10))
+        ctk.CTkButton(cf, text="CREATE", font=_font(15, "bold"),
+                      fg_color=C["teal"], hover_color="#009980", text_color=C["bg"],
+                      width=200, height=44, corner_radius=8,
+                      command=self._create).grid(row=2, column=0, pady=(0,16))
+
+        # Join lobby
+        jf = ctk.CTkFrame(self, fg_color=C["bg3"], corner_radius=12)
+        jf.grid(row=4, column=0, padx=160, pady=8, sticky="ew")
+        jf.columnconfigure(0, weight=1)
+        ctk.CTkLabel(jf, text="JOIN LOBBY", font=_font(18, "bold"),
+                     text_color=C["gold"]).grid(row=0, column=0, pady=(16,4))
+        self._code_entry = ctk.CTkEntry(jf, placeholder_text="Enter lobby code…",
+                                        width=220, height=40, font=_font(14),
+                                        fg_color=C["entry_bg"], border_color=C["gold"], border_width=1)
+        self._code_entry.grid(row=1, column=0, pady=4)
+        ctk.CTkButton(jf, text="JOIN", font=_font(15, "bold"),
+                      fg_color=C["gold"], hover_color="#ccaa00", text_color=C["bg"],
+                      width=200, height=44, corner_radius=8,
+                      command=self._join).grid(row=2, column=0, pady=(4,16))
+
+        self._err_lbl = ctk.CTkLabel(self, text="", font=_font(11), text_color=C["danger"])
+        self._err_lbl.grid(row=5, column=0)
+        _btn_ghost(self, "BACK", on_back, width=180).grid(row=6, column=0, pady=8)
+        _rule(self, C["purple"], height=2, row=13)
+
+    def _create(self):
+        lobby_id = self.pm.duel_create()
+        if lobby_id:
+            self.on_lobby(lobby_id, is_host=True)
+        else:
+            self._err_lbl.configure(text="Could not create lobby — are you online?")
+
+    def _join(self):
+        code = self._code_entry.get().strip().lower()
+        if not code:
+            self._err_lbl.configure(text="Enter a lobby code first.")
+            return
+        lobby = self.pm.duel_join(code)
+        if lobby:
+            self.on_lobby(code, is_host=False)
+        else:
+            self._err_lbl.configure(text="Lobby not found or full.")
+
+
+class DuelLobbyFrame(ctk.CTkFrame):
+    """Waiting room — choose roles, start when both ready."""
+    def __init__(self, parent, pm, lobby_id, is_host, on_back, on_start):
+        super().__init__(parent, fg_color=C["bg"], corner_radius=0)
+        self.pm = pm
+        self.lobby_id = lobby_id
+        self.is_host  = is_host
+        self.on_start = on_start
+        self._poll_id = None
+        self.columnconfigure(0, weight=1)
+        for r in range(16): self.rowconfigure(r, weight=1)
+        _rule(self, C["pink"], row=0)
+        ctk.CTkLabel(self, text="DUEL LOBBY", font=_font(44, "bold"),
+                     text_color=C["pink"]).grid(row=1, column=0, pady=(24, 2))
+
+        # Code display
+        code_f = ctk.CTkFrame(self, fg_color=C["bg3"], corner_radius=10)
+        code_f.grid(row=2, column=0, padx=300, pady=4, sticky="ew")
+        ctk.CTkLabel(code_f, text="LOBBY CODE", font=_font(10), text_color=C["grey"]).pack(pady=(8,0))
+        ctk.CTkLabel(code_f, text=lobby_id.upper(), font=_font(28, "bold"),
+                     text_color=C["teal"]).pack(pady=(0,8))
+
+        # Players panel
+        self._players_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self._players_frame.grid(row=3, column=0, padx=80, pady=8, sticky="ew")
+        self._players_frame.columnconfigure((0,1), weight=1)
+
+        self._status_lbl = ctk.CTkLabel(self, text="Waiting for opponent…",
+                                         font=_font(13), text_color=C["grey"])
+        self._status_lbl.grid(row=4, column=0, pady=4)
+
+        self._start_btn = ctk.CTkButton(self, text="START DUEL", font=_font(17, "bold"),
+                                         fg_color=C["pink"], hover_color="#cc0055",
+                                         text_color="white", width=220, height=50,
+                                         corner_radius=10, command=self._start,
+                                         state="disabled")
+        if is_host:
+            self._start_btn.grid(row=5, column=0, pady=8)
+
+        _btn_ghost(self, "LEAVE", on_back, width=180, border_color=C["danger"]).grid(row=6, column=0, pady=4)
+        _rule(self, C["purple"], height=2, row=15)
+        self._poll()
+
+    def _poll(self):
+        lobby = self.pm.duel_get(self.lobby_id)
+        if lobby:
+            self._render_lobby(lobby)
+            if lobby.get("status") == "playing":
+                if self._poll_id: self.after_cancel(self._poll_id)
+                my_role = (lobby["host_role"] if self.pm.current_user == lobby["host"]
+                           else lobby.get("guest_role", "player"))
+                self.on_start(self.lobby_id, my_role)
+                return
+        self._poll_id = self.after(1500, self._poll)
+
+    def _render_lobby(self, lobby):
+        for w in self._players_frame.winfo_children(): w.destroy()
+        my_user = self.pm.current_user
+        for col, (uname, role) in enumerate([
+            (lobby["host"],  lobby["host_role"]),
+            (lobby.get("guest","—"), lobby.get("guest_role","—")),
+        ]):
+            pf = ctk.CTkFrame(self._players_frame, fg_color=C["bg3"], corner_radius=10)
+            pf.grid(row=0, column=col, padx=12, pady=4, sticky="nsew")
+            pf.columnconfigure(0, weight=1)
+            label = "HOST" if col == 0 else "GUEST"
+            ctk.CTkLabel(pf, text=label, font=_font(10), text_color=C["grey"]).grid(row=0, column=0, pady=(10,0))
+            ctk.CTkLabel(pf, text=uname or "Waiting…", font=_font(16, "bold"),
+                         text_color=C["text"]).grid(row=1, column=0, pady=2)
+            role_clr = C["danger"] if role == "tung" else C["teal"]
+            ctk.CTkLabel(pf, text=role.upper() if role else "—",
+                         font=_font(13, "bold"), text_color=role_clr).grid(row=2, column=0, pady=2)
+            if uname == my_user and uname:
+                btns = ctk.CTkFrame(pf, fg_color="transparent")
+                btns.grid(row=3, column=0, pady=(4,10))
+                for r, clr in [("PLAYER", C["teal"]), ("TUNG", C["danger"])]:
+                    ctk.CTkButton(btns, text=r, font=_font(11, "bold"),
+                                  fg_color=clr if role == r.lower() else C["bg2"],
+                                  hover_color=C["btn_hover"], text_color="white",
+                                  width=80, height=30, corner_radius=6,
+                                  command=lambda r=r: self._set_role(r.lower())).pack(side="left", padx=3)
+        # Enable start if both present and roles set
+        has_guest = bool(lobby.get("guest"))
+        if self.is_host:
+            state = "normal" if has_guest else "disabled"
+            self._start_btn.configure(state=state)
+        self._status_lbl.configure(
+            text="Both players connected! Host can start." if has_guest
+            else "Waiting for opponent to join…")
+
+    def _set_role(self, role):
+        ok, _ = self.pm.duel_set_role(self.lobby_id, role)
+        if ok:
+            lobby = self.pm.duel_get(self.lobby_id)
+            if lobby: self._render_lobby(lobby)
+
+    def _start(self):
+        if self.pm.duel_start(self.lobby_id):
+            lobby = self.pm.duel_get(self.lobby_id)
+            if lobby:
+                my_role = (lobby["host_role"] if self.pm.current_user == lobby["host"]
+                           else lobby.get("guest_role", "player"))
+                if self._poll_id: self.after_cancel(self._poll_id)
+                self.on_start(self.lobby_id, my_role)
+
+
+# ── DuelNetSync — background thread for network I/O during duel ──────
+import threading as _threading
+
+class DuelNetSync:
+    """Runs network calls on a background thread to avoid blocking the game loop."""
+    def __init__(self, pm, lobby_id, role):
+        self._pm       = pm
+        self._id       = lobby_id
+        self._role     = role          # "player" or "tung"
+        self._lock     = _threading.Lock()
+        self._state    = None          # latest game state (tung reads this)
+        self._inp      = {"left": False, "right": False, "jump": False}
+        self._pending_state = None     # player sets this to push
+        self._pending_inp   = None     # tung sets this to push
+        self._running  = True
+        t = _threading.Thread(target=self._loop, daemon=True)
+        t.start()
+
+    def push_state(self, s):
+        with self._lock: self._pending_state = dict(s)
+
+    def push_input(self, inp):
+        with self._lock: self._pending_inp = dict(inp)
+
+    def get_state(self):
+        with self._lock: return self._state
+
+    def get_input(self):
+        with self._lock: return dict(self._inp)
+
+    def stop(self):
+        self._running = False
+
+    def _loop(self):
+        import time as _time
+        while self._running:
+            try:
+                if self._role == "player":
+                    with self._lock:
+                        s = self._pending_state; self._pending_state = None
+                    if s: self._pm.duel_push_state(self._id, s)
+                    inp = self._pm.duel_get_input(self._id)
+                    with self._lock: self._inp = inp or self._inp
+                else:
+                    with self._lock:
+                        inp = self._pending_inp; self._pending_inp = None
+                    if inp: self._pm.duel_push_input(self._id, inp)
+                    st = self._pm.duel_get_state(self._id)
+                    if st:
+                        with self._lock: self._state = st
+            except Exception:
+                pass
+            _time.sleep(0.12)
+
+
+class FriendsFrame(ctk.CTkFrame):
+    """Friends list — view friends, send/accept/decline requests."""
+    def __init__(self, parent, pm, on_back):
+        super().__init__(parent, fg_color=C["bg"], corner_radius=0)
+        self.pm = pm
+        self.columnconfigure(0, weight=1)
+        for r in range(16): self.rowconfigure(r, weight=1)
+        _rule(self, C["teal"], row=0)
+        ctk.CTkLabel(self, text="FRIENDS", font=_font(44, "bold"),
+                     text_color=C["teal"]).grid(row=1, column=0, pady=(24, 4))
+        add_row = ctk.CTkFrame(self, fg_color="transparent")
+        add_row.grid(row=2, column=0, pady=(4, 6))
+        self._add_entry = ctk.CTkEntry(add_row, placeholder_text="Enter username…",
+                                       width=240, height=38, font=_font(13),
+                                       fg_color=C["entry_bg"], border_color=C["teal"], border_width=1)
+        self._add_entry.pack(side="left", padx=(0, 8))
+        ctk.CTkButton(add_row, text="ADD FRIEND", font=_font(13, "bold"),
+                      fg_color=C["teal"], hover_color="#009980", text_color=C["bg"],
+                      width=130, height=38, corner_radius=8,
+                      command=self._send_request).pack(side="left")
+        self._status_lbl = ctk.CTkLabel(self, text="", font=_font(11), text_color=C["gold"])
+        self._status_lbl.grid(row=3, column=0)
+        self._scroll = ctk.CTkScrollableFrame(self, fg_color="transparent", height=360)
+        self._scroll.grid(row=4, column=0, padx=60, sticky="ew")
+        self._scroll.columnconfigure(0, weight=1)
+        _btn_ghost(self, "BACK", on_back, width=180).grid(row=5, column=0, pady=10)
+        _rule(self, C["pink"], height=2, row=15)
+        self._refresh()
+
+    def _refresh(self):
+        for w in self._scroll.winfo_children(): w.destroy()
+        data = self.pm.get_friends()
+        row = 0
+        if data.get("received"):
+            ctk.CTkLabel(self._scroll, text="FRIEND REQUESTS", font=_font(12, "bold"),
+                         text_color=C["gold"]).grid(row=row, column=0, sticky="w", pady=(8,2))
+            row += 1
+            for u in data["received"]: self._request_row(row, u); row += 1
+        friends = data.get("friends", [])
+        lbl = f"FRIENDS ({len(friends)})" if friends else "No friends yet — add one above!"
+        ctk.CTkLabel(self._scroll, text=lbl, font=_font(12, "bold"),
+                     text_color=C["teal"]).grid(row=row, column=0, sticky="w", pady=(10,2))
+        row += 1
+        for entry in friends: self._friend_row(row, entry); row += 1
+        if data.get("sent"):
+            ctk.CTkLabel(self._scroll, text="PENDING (SENT)", font=_font(12, "bold"),
+                         text_color=C["grey"]).grid(row=row, column=0, sticky="w", pady=(10,2))
+            row += 1
+            for u in data["sent"]:
+                f = ctk.CTkFrame(self._scroll, fg_color=C["bg2"], corner_radius=8)
+                f.grid(row=row, column=0, sticky="ew", pady=2); row += 1
+                f.columnconfigure(1, weight=1)
+                ctk.CTkLabel(f, text="⏳", font=_font(14)).grid(row=0, column=0, padx=(12,6), pady=8)
+                ctk.CTkLabel(f, text=u, font=_font(14), text_color=C["grey"]).grid(row=0, column=1, sticky="w")
+                ctk.CTkLabel(f, text="Waiting…", font=_font(11), text_color=C["grey"]).grid(row=0, column=2, padx=12)
+
+    def _friend_row(self, row, entry):
+        u  = entry["username"] if isinstance(entry, dict) else entry
+        hs = entry.get("highScore", 0) if isinstance(entry, dict) else 0
+        f  = ctk.CTkFrame(self._scroll, fg_color=C["bg3"], corner_radius=8)
+        f.grid(row=row, column=0, sticky="ew", pady=2)
+        f.columnconfigure(1, weight=1)
+        ctk.CTkLabel(f, text="👤", font=_font(14)).grid(row=0, column=0, padx=(12,6), pady=8)
+        ctk.CTkLabel(f, text=u, font=_font(14, "bold"), text_color=C["text"]).grid(row=0, column=1, sticky="w")
+        ctk.CTkLabel(f, text=f"🏆 {hs:,}", font=_font(12), text_color=C["pink"]).grid(row=0, column=2, padx=8)
+        ctk.CTkButton(f, text="REMOVE", font=_font(10), fg_color="transparent",
+                      hover_color=C["btn_hover"], text_color=C["danger"],
+                      border_width=1, border_color=C["danger"], width=70, height=26, corner_radius=5,
+                      command=lambda u=u: self._remove(u)).grid(row=0, column=3, padx=8)
+
+    def _request_row(self, row, username):
+        f = ctk.CTkFrame(self._scroll, fg_color=C["bg2"], corner_radius=8)
+        f.grid(row=row, column=0, sticky="ew", pady=2)
+        f.columnconfigure(1, weight=1)
+        ctk.CTkLabel(f, text="📨", font=_font(14)).grid(row=0, column=0, padx=(12,6), pady=8)
+        ctk.CTkLabel(f, text=username, font=_font(14), text_color=C["gold"]).grid(row=0, column=1, sticky="w")
+        ctk.CTkButton(f, text="ACCEPT", font=_font(10, "bold"), fg_color=C["teal"],
+                      hover_color="#009980", text_color=C["bg"], width=74, height=26, corner_radius=5,
+                      command=lambda u=username: self._accept(u)).grid(row=0, column=2, padx=4)
+        ctk.CTkButton(f, text="DECLINE", font=_font(10), fg_color="transparent",
+                      hover_color=C["btn_hover"], text_color=C["danger"],
+                      border_width=1, border_color=C["danger"], width=74, height=26, corner_radius=5,
+                      command=lambda u=username: self._decline(u)).grid(row=0, column=3, padx=(0,8))
+
+    def _send_request(self):
+        target = self._add_entry.get().strip().lower()
+        if not target: return
+        ok, msg = self.pm.send_friend_request(target)
+        self._add_entry.delete(0, "end")
+        if ok:
+            self._status_lbl.configure(text=f"✓ Request sent to {target}!", text_color=C["teal"])
+        else:
+            self._status_lbl.configure(text=f"✗ {msg}", text_color=C["danger"])
+        self.after(3000, lambda: self._status_lbl.configure(text=""))
+        self._refresh()
+
+    def _accept(self, u): self.pm.accept_friend(u); self._refresh()
+    def _decline(self, u): self.pm.decline_friend(u); self._refresh()
+    def _remove(self, u): self.pm.remove_friend(u); self._refresh()
+
+
+class MessagesFrame(ctk.CTkFrame):
+    """DM system — friends list on left, chat on right."""
+    def __init__(self, parent, pm, on_back):
+        super().__init__(parent, fg_color=C["bg"], corner_radius=0)
+        self.pm = pm
+        self._other = None
+        self._poll_id = None
+        self.columnconfigure(0, weight=0)
+        self.columnconfigure(1, weight=1)
+        for r in range(20): self.rowconfigure(r, weight=1)
+        _rule(self, C["purple"], row=0)
+        ctk.CTkLabel(self, text="MESSAGES", font=_font(36, "bold"),
+                     text_color=C["purple"]).grid(row=1, column=0, columnspan=2, pady=(18, 4))
+
+        # Left: friend list
+        lf = ctk.CTkFrame(self, fg_color=C["bg2"], corner_radius=10)
+        lf.grid(row=2, column=0, rowspan=16, padx=(40,8), pady=8, sticky="nsew")
+        lf.columnconfigure(0, weight=1)
+        ctk.CTkLabel(lf, text="FRIENDS", font=_font(12, "bold"),
+                     text_color=C["grey"]).grid(row=0, column=0, pady=(10,4), padx=12, sticky="w")
+        self._friend_list = ctk.CTkScrollableFrame(lf, fg_color="transparent", width=160, height=320)
+        self._friend_list.grid(row=1, column=0, padx=4, pady=4)
+        self._friend_list.columnconfigure(0, weight=1)
+        self._populate_friends()
+
+        # Right: chat area
+        self._chat_area = ctk.CTkScrollableFrame(self, fg_color=C["bg3"],
+                                                  corner_radius=10, height=340)
+        self._chat_area.grid(row=2, column=1, rowspan=14, padx=(8,40), pady=8, sticky="nsew")
+        self._chat_area.columnconfigure(0, weight=1)
+        self._empty_lbl = ctk.CTkLabel(self._chat_area,
+                                        text="Select a friend to start chatting",
+                                        font=_font(13), text_color=C["grey"])
+        self._empty_lbl.grid(row=0, column=0, pady=40)
+
+        # Input row
+        inp_row = ctk.CTkFrame(self, fg_color="transparent")
+        inp_row.grid(row=16, column=1, padx=(8,40), pady=(0,6), sticky="ew")
+        inp_row.columnconfigure(0, weight=1)
+        self._msg_entry = ctk.CTkEntry(inp_row, placeholder_text="Type a message…",
+                                       height=40, font=_font(13), fg_color=C["entry_bg"],
+                                       border_color=C["purple"], border_width=1)
+        self._msg_entry.grid(row=0, column=0, padx=(0,8), sticky="ew")
+        self._msg_entry.bind("<Return>", lambda e: self._send())
+        ctk.CTkButton(inp_row, text="SEND", font=_font(13, "bold"),
+                      fg_color=C["purple"], hover_color="#7010b0", text_color="white",
+                      width=80, height=40, corner_radius=8,
+                      command=self._send).grid(row=0, column=1)
+
+        _btn_ghost(self, "BACK", on_back, width=160).grid(row=17, column=0, columnspan=2, pady=8)
+
+    def _populate_friends(self):
+        for w in self._friend_list.winfo_children(): w.destroy()
+        data = self.pm.get_friends()
+        for i, entry in enumerate(data.get("friends", [])):
+            u = entry["username"] if isinstance(entry, dict) else entry
+            bg = C["equipped"] if u == self._other else C["bg3"]
+            btn = ctk.CTkButton(self._friend_list, text=u, font=_font(12),
+                                 fg_color=bg, hover_color=C["btn_hover"],
+                                 text_color=C["text"], anchor="w",
+                                 width=150, height=34, corner_radius=6,
+                                 command=lambda u=u: self._open_chat(u))
+            btn.grid(row=i, column=0, pady=2, padx=4, sticky="ew")
+
+    def _open_chat(self, username):
+        self._other = username
+        self._populate_friends()
+        if self._poll_id:
+            self.after_cancel(self._poll_id)
+        self._load_messages()
+
+    def _load_messages(self):
+        if not self._other: return
+        for w in self._chat_area.winfo_children(): w.destroy()
+        msgs = self.pm.get_messages(self._other)
+        if not msgs:
+            ctk.CTkLabel(self._chat_area, text="No messages yet — say hi!",
+                         font=_font(12), text_color=C["grey"]).grid(row=0, column=0, pady=20)
+        for i, m in enumerate(msgs):
+            is_me = m.get("from") == self.pm.current_user
+            align = "e" if is_me else "w"
+            clr   = C["teal"] if is_me else C["text"]
+            bg    = C["equipped"] if is_me else C["bg2"]
+            bubble = ctk.CTkFrame(self._chat_area, fg_color=bg, corner_radius=10)
+            bubble.grid(row=i, column=0, sticky=align, padx=12, pady=2)
+            ctk.CTkLabel(bubble, text=m.get("text",""), font=_font(13),
+                         text_color=clr, wraplength=320).pack(padx=12, pady=6)
+        # Auto-poll every 3s
+        self._poll_id = self.after(3000, self._load_messages)
+
+    def _send(self):
+        if not self._other: return
+        text = self._msg_entry.get().strip()
+        if not text: return
+        ok, err_msg = self.pm.send_message(self._other, text)
+        if ok:
+            self._msg_entry.delete(0, "end")
+            self._load_messages()
+        else:
+            self._msg_entry.delete(0, "end")
+            self._msg_entry.configure(placeholder_text=f"Error: {err_msg}")
+
+
+class DuelFrame(ctk.CTkFrame):
+    """Create or join a duel lobby."""
+    def __init__(self, parent, pm, on_back, on_lobby):
+        super().__init__(parent, fg_color=C["bg"], corner_radius=0)
+        self.pm = pm
+        self.on_lobby = on_lobby
+        self.columnconfigure(0, weight=1)
+        for r in range(14): self.rowconfigure(r, weight=1)
+        _rule(self, C["pink"], row=0)
+        ctk.CTkLabel(self, text="DUELS", font=_font(50, "bold"),
+                     text_color=C["pink"]).grid(row=1, column=0, pady=(28, 4))
+        ctk.CTkLabel(self, text="Challenge a friend — one plays as Tung!",
+                     font=_font(14), text_color=C["grey"]).grid(row=2, column=0, pady=(0, 16))
+
+        # Create lobby
+        cf = ctk.CTkFrame(self, fg_color=C["bg3"], corner_radius=12)
+        cf.grid(row=3, column=0, padx=160, pady=8, sticky="ew")
+        cf.columnconfigure(0, weight=1)
+        ctk.CTkLabel(cf, text="CREATE LOBBY", font=_font(18, "bold"),
+                     text_color=C["teal"]).grid(row=0, column=0, pady=(16,4))
+        ctk.CTkLabel(cf, text="Share the code with a friend to start a duel.",
+                     font=_font(12), text_color=C["grey"]).grid(row=1, column=0, pady=(0,10))
+        ctk.CTkButton(cf, text="CREATE", font=_font(15, "bold"),
+                      fg_color=C["teal"], hover_color="#009980", text_color=C["bg"],
+                      width=200, height=44, corner_radius=8,
+                      command=self._create).grid(row=2, column=0, pady=(0,16))
+
+        # Join lobby
+        jf = ctk.CTkFrame(self, fg_color=C["bg3"], corner_radius=12)
+        jf.grid(row=4, column=0, padx=160, pady=8, sticky="ew")
+        jf.columnconfigure(0, weight=1)
+        ctk.CTkLabel(jf, text="JOIN LOBBY", font=_font(18, "bold"),
+                     text_color=C["gold"]).grid(row=0, column=0, pady=(16,4))
+        self._code_entry = ctk.CTkEntry(jf, placeholder_text="Enter lobby code…",
+                                        width=220, height=40, font=_font(14),
+                                        fg_color=C["entry_bg"], border_color=C["gold"], border_width=1)
+        self._code_entry.grid(row=1, column=0, pady=4)
+        ctk.CTkButton(jf, text="JOIN", font=_font(15, "bold"),
+                      fg_color=C["gold"], hover_color="#ccaa00", text_color=C["bg"],
+                      width=200, height=44, corner_radius=8,
+                      command=self._join).grid(row=2, column=0, pady=(4,16))
+
+        self._err_lbl = ctk.CTkLabel(self, text="", font=_font(11), text_color=C["danger"])
+        self._err_lbl.grid(row=5, column=0)
+        _btn_ghost(self, "BACK", on_back, width=180).grid(row=6, column=0, pady=8)
+        _rule(self, C["purple"], height=2, row=13)
+
+    def _create(self):
+        lobby_id = self.pm.duel_create()
+        if lobby_id:
+            self.on_lobby(lobby_id, is_host=True)
+        else:
+            self._err_lbl.configure(text="Could not create lobby — are you online?")
+
+    def _join(self):
+        code = self._code_entry.get().strip().lower()
+        if not code:
+            self._err_lbl.configure(text="Enter a lobby code first.")
+            return
+        lobby = self.pm.duel_join(code)
+        if lobby:
+            self.on_lobby(code, is_host=False)
+        else:
+            self._err_lbl.configure(text="Lobby not found or full.")
+
+
+class DuelLobbyFrame(ctk.CTkFrame):
+    """Waiting room — choose roles, start when both ready."""
+    def __init__(self, parent, pm, lobby_id, is_host, on_back, on_start):
+        super().__init__(parent, fg_color=C["bg"], corner_radius=0)
+        self.pm = pm
+        self.lobby_id = lobby_id
+        self.is_host  = is_host
+        self.on_start = on_start
+        self._poll_id = None
+        self.columnconfigure(0, weight=1)
+        for r in range(16): self.rowconfigure(r, weight=1)
+        _rule(self, C["pink"], row=0)
+        ctk.CTkLabel(self, text="DUEL LOBBY", font=_font(44, "bold"),
+                     text_color=C["pink"]).grid(row=1, column=0, pady=(24, 2))
+
+        # Code display
+        code_f = ctk.CTkFrame(self, fg_color=C["bg3"], corner_radius=10)
+        code_f.grid(row=2, column=0, padx=300, pady=4, sticky="ew")
+        ctk.CTkLabel(code_f, text="LOBBY CODE", font=_font(10), text_color=C["grey"]).pack(pady=(8,0))
+        ctk.CTkLabel(code_f, text=lobby_id.upper(), font=_font(28, "bold"),
+                     text_color=C["teal"]).pack(pady=(0,8))
+
+        # Players panel
+        self._players_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self._players_frame.grid(row=3, column=0, padx=80, pady=8, sticky="ew")
+        self._players_frame.columnconfigure((0,1), weight=1)
+
+        self._status_lbl = ctk.CTkLabel(self, text="Waiting for opponent…",
+                                         font=_font(13), text_color=C["grey"])
+        self._status_lbl.grid(row=4, column=0, pady=4)
+
+        self._start_btn = ctk.CTkButton(self, text="START DUEL", font=_font(17, "bold"),
+                                         fg_color=C["pink"], hover_color="#cc0055",
+                                         text_color="white", width=220, height=50,
+                                         corner_radius=10, command=self._start,
+                                         state="disabled")
+        if is_host:
+            self._start_btn.grid(row=5, column=0, pady=8)
+
+        _btn_ghost(self, "LEAVE", on_back, width=180, border_color=C["danger"]).grid(row=6, column=0, pady=4)
+        _rule(self, C["purple"], height=2, row=15)
+        self._poll()
+
+    def _poll(self):
+        lobby = self.pm.duel_get(self.lobby_id)
+        if lobby:
+            self._render_lobby(lobby)
+            if lobby.get("status") == "playing":
+                if self._poll_id: self.after_cancel(self._poll_id)
+                my_role = (lobby["host_role"] if self.pm.current_user == lobby["host"]
+                           else lobby.get("guest_role", "player"))
+                self.on_start(self.lobby_id, my_role)
+                return
+        self._poll_id = self.after(1500, self._poll)
+
+    def _render_lobby(self, lobby):
+        for w in self._players_frame.winfo_children(): w.destroy()
+        my_user = self.pm.current_user
+        for col, (uname, role) in enumerate([
+            (lobby["host"],  lobby["host_role"]),
+            (lobby.get("guest","—"), lobby.get("guest_role","—")),
+        ]):
+            pf = ctk.CTkFrame(self._players_frame, fg_color=C["bg3"], corner_radius=10)
+            pf.grid(row=0, column=col, padx=12, pady=4, sticky="nsew")
+            pf.columnconfigure(0, weight=1)
+            label = "HOST" if col == 0 else "GUEST"
+            ctk.CTkLabel(pf, text=label, font=_font(10), text_color=C["grey"]).grid(row=0, column=0, pady=(10,0))
+            ctk.CTkLabel(pf, text=uname or "Waiting…", font=_font(16, "bold"),
+                         text_color=C["text"]).grid(row=1, column=0, pady=2)
+            role_clr = C["danger"] if role == "tung" else C["teal"]
+            ctk.CTkLabel(pf, text=role.upper() if role else "—",
+                         font=_font(13, "bold"), text_color=role_clr).grid(row=2, column=0, pady=2)
+            if uname == my_user and uname:
+                btns = ctk.CTkFrame(pf, fg_color="transparent")
+                btns.grid(row=3, column=0, pady=(4,10))
+                for r, clr in [("PLAYER", C["teal"]), ("TUNG", C["danger"])]:
+                    ctk.CTkButton(btns, text=r, font=_font(11, "bold"),
+                                  fg_color=clr if role == r.lower() else C["bg2"],
+                                  hover_color=C["btn_hover"], text_color="white",
+                                  width=80, height=30, corner_radius=6,
+                                  command=lambda r=r: self._set_role(r.lower())).pack(side="left", padx=3)
+        # Enable start if both present and roles set
+        has_guest = bool(lobby.get("guest"))
+        if self.is_host:
+            state = "normal" if has_guest else "disabled"
+            self._start_btn.configure(state=state)
+        self._status_lbl.configure(
+            text="Both players connected! Host can start." if has_guest
+            else "Waiting for opponent to join…")
+
+    def _set_role(self, role):
+        ok, _ = self.pm.duel_set_role(self.lobby_id, role)
+        if ok:
+            lobby = self.pm.duel_get(self.lobby_id)
+            if lobby: self._render_lobby(lobby)
+
+    def _start(self):
+        if self.pm.duel_start(self.lobby_id):
+            lobby = self.pm.duel_get(self.lobby_id)
+            if lobby:
+                my_role = (lobby["host_role"] if self.pm.current_user == lobby["host"]
+                           else lobby.get("guest_role", "player"))
+                if self._poll_id: self.after_cancel(self._poll_id)
+                self.on_start(self.lobby_id, my_role)
+
 class LeaderboardFrame(ctk.CTkFrame):
     def __init__(self, parent, pm, on_back):
         super().__init__(parent, fg_color=C["bg"], corner_radius=0)
@@ -1588,6 +2598,105 @@ class GameOverFrame(ctk.CTkFrame):
 # ══════════════════════════════════════════════════════════════════════
 #  APP
 # ══════════════════════════════════════════════════════════════════════
+def run_duel_as_tung(duel_sync):
+    """Game loop for the Tung player — renders server state, sends inputs."""
+    pygame.init()
+    pygame.display.set_caption("Tung Tung Sahur — YOU ARE TUNG!")
+    screen = pygame.display.set_mode((WIN_W, WIN_H))
+    clock  = pygame.time.Clock()
+    assets = _load_assets()
+    font_big = assets["font_lg"]
+    font_sm  = assets["font_sm"]
+    _last_inp = 0.0
+    state = None
+    prev_jump = False
+
+    hint_surf = font_sm.render("A/D = move   W/SPACE = jump   Catch the player!", True, (180,160,220))
+
+    while True:
+        dt  = min(clock.tick(60) / 1000.0, 0.05)
+        now = time.time()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); return -99, 0, 0
+
+        keys = pygame.key.get_pressed()
+        jump_now = keys[pygame.K_w] or keys[pygame.K_SPACE] or keys[pygame.K_UP]
+        inp = {
+            "left":  keys[pygame.K_a] or keys[pygame.K_LEFT],
+            "right": keys[pygame.K_d] or keys[pygame.K_RIGHT],
+            "jump":  jump_now and not prev_jump,
+        }
+        prev_jump = jump_now
+
+        if now - _last_inp > 0.08:
+            duel_sync.push_input(inp)
+            _last_inp = now
+
+        new_state = duel_sync.get_state()
+        if new_state: state = new_state
+
+        # Check game over
+        if state and state.get("dead"):
+            pygame.quit()
+            return -2, 0, 0  # tung wins
+        if state and state.get("tung_won"):
+            pygame.quit()
+            return -1, 0, 0  # player wins (shouldn't happen on tung client)
+
+        # ── Render ──────────────────────────────────────────────────
+        screen.fill(PG["bg"])
+        # Stars (static)
+        for i in range(0, WIN_W, 60):
+            for j in range(0, WIN_H, 60):
+                if (i * 31 + j * 17) % 13 == 0:
+                    pygame.draw.circle(screen, PG["star1"], (i,j), 1)
+
+        if state:
+            # Ground
+            pygame.draw.rect(screen, PG["ground"], (0, GROUND_Y, WIN_W, WIN_H - GROUND_Y))
+            pygame.draw.line(screen, PG["gnd_top"], (0, GROUND_Y), (WIN_W, GROUND_Y), 3)
+
+            # Platforms
+            for (sx, py, hw, is_temp) in state.get("plats", []):
+                clr = PG["t_plat"] if is_temp else PG["plat"]
+                r = pygame.Rect(int(sx), int(py), int(hw * 2), 14)
+                pygame.draw.rect(screen, clr, r, border_radius=4)
+                pygame.draw.rect(screen, PG["gnd_top"], pygame.Rect(r.x, r.y, r.width, 3), border_radius=2)
+
+            # Player
+            p_y   = int(state["p_y"])
+            p_rect = pygame.Rect(PLAYER_SX, p_y, PLAYER_W, PLAYER_H)
+            pygame.draw.rect(screen, PG["player"], p_rect, border_radius=5)
+
+            # Tung
+            tsx = int(state["tung_sx"])
+            tsy = int(state["tung_y"])
+            if "tung" in assets:
+                screen.blit(assets["tung"], (tsx - TUNG_W // 2, tsy))
+            else:
+                pygame.draw.rect(screen, PG["tung"],
+                                 (tsx - TUNG_W // 2, tsy, TUNG_W, TUNG_H), border_radius=6)
+            # YOU ARE HERE arrow
+            arrow_surf = font_sm.render("▼ YOU", True, PG["danger"])
+            screen.blit(arrow_surf, (tsx - arrow_surf.get_width()//2, tsy - 24))
+
+            # HUD
+            pygame.draw.rect(screen, PG["hud_bg"], (0, PLAY_H, WIN_W, HUD_H))
+            pygame.draw.line(screen, PG["gnd_top"], (0, PLAY_H), (WIN_W, PLAY_H), 2)
+            score_s = font_sm.render(f"Player score: {int(state.get('score',0)):,}", True, PG["pink"])
+            screen.blit(score_s, (18, PLAY_H + 10))
+            screen.blit(hint_surf, (WIN_W//2 - hint_surf.get_width()//2, PLAY_H + 10))
+        else:
+            # Waiting for game state
+            wait_s = font_big.render("Waiting for game to start…", True, PG["teal"])
+            screen.blit(wait_s, (WIN_W//2 - wait_s.get_width()//2, WIN_H//2 - 20))
+
+        pygame.display.flip()
+
+
+
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -1624,6 +2733,9 @@ class App(ctk.CTk):
                                 on_locker=self._show_locker,
                                 on_bp=self._show_bp,
                                 on_lb=self._show_lb,
+                                on_friends=self._show_friends,
+                                on_messages=self._show_messages,
+                                on_duel=self._show_duel,
                                 on_logout=self._logout,
                                 on_quit=self.quit))
 
@@ -1639,6 +2751,57 @@ class App(ctk.CTk):
     def _show_lb(self):
         self._set(LeaderboardFrame(self, self.pm, on_back=self.show_main_menu))
 
+    def _show_friends(self):
+        self._set(FriendsFrame(self, self.pm, on_back=self.show_main_menu))
+
+    def _show_messages(self):
+        self._set(MessagesFrame(self, self.pm, on_back=self.show_main_menu))
+
+    def _show_duel(self):
+        self._set(DuelFrame(self, self.pm,
+                            on_back=self.show_main_menu,
+                            on_lobby=self._show_duel_lobby))
+
+    def _show_duel_lobby(self, lobby_id, is_host):
+        self._set(DuelLobbyFrame(self, self.pm, lobby_id, is_host,
+                                 on_back=self._show_duel,
+                                 on_start=self._start_duel))
+
+    def _start_duel(self, lobby_id, role):
+        if self._fr: self._fr.destroy(); self._fr = None
+        self.after(80, lambda: self._run_duel(lobby_id, role))
+
+    def _run_duel(self, lobby_id, role):
+        self.withdraw()
+        try:
+            rec = self.pm.current()
+            wpn = rec.get("current_weapon", "none")
+            abl = rec.get("current_ability", "slam")
+            skn = rec.get("current_skin", "default")
+            sync = DuelNetSync(self.pm, lobby_id, role)
+            if role == "player":
+                score, coins, dist = run_pygame_game(wpn, abl, skn, duel_sync=sync)
+            else:
+                score, coins, dist = run_duel_as_tung(sync)
+            sync.stop()
+        finally:
+            self.deiconify()
+        import customtkinter as _ctk
+        over_f = ctk.CTkFrame(self, fg_color=C["bg"], corner_radius=0)
+        over_f.pack(fill="both", expand=True)
+        if self._fr: self._fr.destroy()
+        self._fr = over_f
+        over_f.columnconfigure(0, weight=1)
+        winner_txt = "YOU WIN! 🏆" if score == -1 else "TUNG WINS! 💀" if score == -2 else f"Score: {score:,}"
+        clr = C["teal"] if score == -1 else C["danger"] if score == -2 else C["pink"]
+        ctk.CTkLabel(over_f, text="DUEL OVER", font=_font(44, "bold"),
+                     text_color=C["pink"]).pack(pady=(60,4))
+        ctk.CTkLabel(over_f, text=winner_txt, font=_font(28, "bold"),
+                     text_color=clr).pack(pady=8)
+        ctk.CTkLabel(over_f, text="No coins or XP earned in duels.",
+                     font=_font(12), text_color=C["grey"]).pack(pady=4)
+        _btn_primary(over_f, "BACK TO MENU", self.show_main_menu).pack(pady=24)
+
     def _logout(self):
         self.pm.logout(); self.show_login()
 
@@ -1646,13 +2809,17 @@ class App(ctk.CTk):
         rec = self.pm.current()
         wpn = rec.get("current_weapon", "none")
         abl = rec.get("current_ability", "slam")
+        skn = rec.get("current_skin", "default")
         if self._fr: self._fr.destroy(); self._fr = None
-        self.after(80, lambda: self._run(wpn, abl))
+        self.after(80, lambda: self._run(wpn, abl, skn))
 
-    def _run(self, wpn, abl):
+    def _run(self, wpn, abl, skn="default"):
         self.withdraw()
         try:
-            score, coins, dist = run_pygame_game(wpn, abl)
+            lb = self.pm.leaderboard()
+            rank1_user = lb[0][0] if lb else None
+            is_rank1 = (rank1_user is not None and rank1_user == self.pm.current_user)
+            score, coins, dist = run_pygame_game(wpn, abl, skn, is_rank1=is_rank1)
         finally:
             self.deiconify()
         xp_earned = self.pm.add_run_result(score, coins)
@@ -1730,17 +2897,33 @@ ABILITIES = {
 
 # Battle Pass: 10 tiers, resets every 7 days
 BP_TIERS = [
-    {"xp_needed":  300, "reward_type": "coins",   "reward_val":  60,            "label": "60 Coins"},
-    {"xp_needed":  600, "reward_type": "coins",   "reward_val": 120,            "label": "120 Coins"},
-    {"xp_needed": 1000, "reward_type": "ability", "reward_val": "triple_jump",  "label": "Triple Jump"},
-    {"xp_needed": 1400, "reward_type": "coins",   "reward_val": 200,            "label": "200 Coins"},
-    {"xp_needed": 1900, "reward_type": "coins",   "reward_val": 280,            "label": "280 Coins"},
-    {"xp_needed": 2500, "reward_type": "ability", "reward_val": "speed_slam",   "label": "Speed Slam"},
-    {"xp_needed": 3200, "reward_type": "coins",   "reward_val": 380,            "label": "380 Coins"},
-    {"xp_needed": 4000, "reward_type": "coins",   "reward_val": 500,            "label": "500 Coins"},
-    {"xp_needed": 5000, "reward_type": "ability", "reward_val": "balloon",      "label": "Balloon"},
-    {"xp_needed": 6200, "reward_type": "coins",   "reward_val": 1000,           "label": "1000 Coins"},
+    {"xp_needed":  200, "reward_type": "skin",    "reward_val": "neon",         "label": "Neon Skin"},
+    {"xp_needed":  500, "reward_type": "coins",   "reward_val": 100,            "label": "100 Coins"},
+    {"xp_needed":  900, "reward_type": "skin",    "reward_val": "crimson",      "label": "Crimson Skin"},
+    {"xp_needed": 1400, "reward_type": "ability", "reward_val": "triple_jump",  "label": "Triple Jump"},
+    {"xp_needed": 2000, "reward_type": "skin",    "reward_val": "ice",          "label": "Ice Skin"},
+    {"xp_needed": 2700, "reward_type": "ability", "reward_val": "speed_slam",   "label": "Speed Slam"},
+    {"xp_needed": 3500, "reward_type": "skin",    "reward_val": "ghost",        "label": "Ghost Skin"},
+    {"xp_needed": 4500, "reward_type": "ability", "reward_val": "balloon",      "label": "Balloon"},
+    {"xp_needed": 5500, "reward_type": "skin",    "reward_val": "toxic",        "label": "Toxic Skin"},
+    {"xp_needed": 7000, "reward_type": "skin",    "reward_val": "golden",       "label": "Golden Skin"},
+    {"xp_needed": 9000, "reward_type": "skin",    "reward_val": "shadow",       "label": "Shadow Skin"},
 ]
+
+# ── Skins ─────────────────────────────────────────────────────
+# color = fallback pygame color if PNG not cached
+# glow  = glow color when not slamming
+# pg_color = hex for UI
+SKINS = {
+    "default": {"name": "Default", "color": (255,  31, 110), "pg_color": "#ff1f6e"},
+    "neon":    {"name": "Neon",    "color": ( 57, 255, 180), "pg_color": "#39ffb4"},
+    "ghost":   {"name": "Ghost",   "color": (200, 200, 255), "pg_color": "#c8c8ff"},
+    "golden":  {"name": "Golden",  "color": (255, 215,   0), "pg_color": "#ffd700"},
+    "crimson": {"name": "Crimson", "color": (220,  20,  60), "pg_color": "#dc143c"},
+    "ice":     {"name": "Ice",     "color": (135, 206, 250), "pg_color": "#87cefa"},
+    "toxic":   {"name": "Toxic",   "color": (127, 255,   0), "pg_color": "#7fff00"},
+    "shadow":  {"name": "Shadow",  "color": ( 80,  20, 120), "pg_color": "#501478"},
+}
 
 C = {
     "bg": "#07000f", "bg2": "#0d001e", "bg3": "#120028",
@@ -1788,6 +2971,7 @@ class PlayerManager:
         "high_score": 0, "total_score": 0, "coins": 0,
         "current_weapon": "none",  "owned_weapons":   [],
         "current_ability": "slam", "owned_abilities": [],
+        "current_skin": "default", "owned_skins":     [],
         "battle_pass": None,
     }
 
@@ -1873,6 +3057,10 @@ class PlayerManager:
             key = tier["reward_val"]
             if key not in rec["owned_abilities"]:
                 rec["owned_abilities"].append(key)
+        elif tier["reward_type"] == "skin":
+            key = tier["reward_val"]
+            if key not in rec.get("owned_skins", []):
+                rec.setdefault("owned_skins", []).append(key)
         self._save()
         return True, tier["label"]
 
@@ -1922,6 +3110,12 @@ class PlayerManager:
             rec["current_ability"] = key
             self._save()
 
+    def equip_skin(self, key):
+        rec = self.current()
+        if key == "default" or key in rec.get("owned_skins", []):
+            rec["current_skin"] = key
+            self._save()
+
     def leaderboard(self):
         rows = [
             (n, r.get("high_score", 0), r.get("total_score", 0))
@@ -1929,6 +3123,24 @@ class PlayerManager:
         ]
         rows.sort(key=lambda r: r[1], reverse=True)
         return rows
+
+    def get_friends(self):
+        return {"friends": [], "sent": [], "received": []}
+    def send_friend_request(self, u): return False, "Friends require an online connection."
+    def accept_friend(self, u):       return False, "Offline."
+    def decline_friend(self, u):      return False, "Offline."
+    def remove_friend(self, u):       return False, "Offline."
+    def get_messages(self, u):        return []
+    def send_message(self, u, t):     return False, "Offline."
+    def duel_create(self):            return None
+    def duel_join(self, i):           return None
+    def duel_get(self, i):            return None
+    def duel_set_role(self, i, r):    return False, {}
+    def duel_start(self, i):          return False
+    def duel_push_state(self, i, s):  pass
+    def duel_get_state(self, i):      return None
+    def duel_push_input(self, i, inp):pass
+    def duel_get_input(self, i):      return {"left": False, "right": False, "jump": False}
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -2040,9 +3252,11 @@ class StarField:
 #  PYGAME GAME
 # ══════════════════════════════════════════════════════════════════════
 class PygameGame:
-    def __init__(self, weapon_key, ability_key):
+    def __init__(self, weapon_key, ability_key, skin_key="default", is_rank1=False):
         self.weapon_key  = weapon_key
         self.ability_key = ability_key
+        self.skin_key    = skin_key
+        self._is_rank1   = is_rank1
         self.score       = 0
         self.coins_col   = 0
         self.elapsed     = 0.0
@@ -2227,6 +3441,17 @@ class PygameGame:
     # ── Tung AI ──────────────────────────────────────────────────────
     def _tung_ai(self, dt, now):
         if now < self.tung_stun: return
+        # Duel mode: human controls Tung
+        duel_inp = getattr(self, "_duel_inp", None)
+        if duel_inp:
+            if duel_inp.get("left") and not duel_inp.get("right"):
+                self.tung_wx -= TUNG_BASE_SPD * 1.1 * dt
+            elif duel_inp.get("right") and not duel_inp.get("left"):
+                self.tung_wx += TUNG_BASE_SPD * 1.1 * dt
+            if duel_inp.get("jump") and self.tung_on_gnd and self.tung_jc == 0:
+                self.tung_vy = JUMP_V * 0.88
+                self.tung_jc = 1
+            return
         gap   = PLAYER_SX - self.tung_sx
         extra = max(0.0, (gap - TUNG_GAP_IDL) * TUNG_GAP_K)
         spd   = min(TUNG_MAX_SPD, self.tung_spd + extra)
@@ -2462,15 +3687,24 @@ class PygameGame:
         # Player glow
         pcx = PLAYER_SX
         pcy = int(self.p_y + PLAYER_H / 2)
-        gcl = PG["p_slam"] if self.p_slam else PG["pink"]
+        _skin = SKINS.get(self.skin_key, SKINS["default"])
+        _skin_clr = _skin["color"]
+        gcl = PG["p_slam"] if self.p_slam else _skin_clr
         gr  = int((PLAYER_W + 12) * (0.85 + 0.15 * math.sin(now * 9)))
         gsu = pygame.Surface((gr * 2, gr * 2), pygame.SRCALPHA)
         pygame.draw.ellipse(gsu, (*gcl, 75), gsu.get_rect())
         surf.blit(gsu, (pcx - gr, pcy - gr))
 
-        # Player body
-        bcl = PG["p_slam"] if self.p_slam else PG["player"]
+        # Player body — colored rect using current skin
+        bcl = PG["p_slam"] if self.p_slam else _skin_clr
         pygame.draw.rect(surf, bcl, self.p_rect, border_radius=5)
+
+        # Crown — drawn on top of player if they are #1 on leaderboard
+        if assets.get("crown") and getattr(self, "_is_rank1", False):
+            crown = assets["crown"]
+            cx = PLAYER_SX - crown.get_width() // 2
+            cy = int(self.p_y) - crown.get_height() - 2
+            surf.blit(crown, (cx, cy))
 
         # Tung
         stun_now = now < self.tung_stun
@@ -2595,6 +3829,16 @@ def _load_assets():
             except Exception:
                 pass
 
+    # Crown for #1 player
+    for crown_name in ("Crown.png", "crown.png", "Crown.PNG"):
+        if os.path.exists(crown_name):
+            try:
+                raw = pygame.image.load(crown_name).convert_alpha()
+                assets["crown"] = pygame.transform.smoothscale(raw, (36, 24))
+                break
+            except Exception:
+                pass
+
     for k, sz, bold in [("font_lg", 30, True), ("font_md", 20, True),
                         ("font_hud", 16, True), ("font_sm", 13, False)]:
         for fam in ("Courier New", "Courier", "monospace", None):
@@ -2619,14 +3863,15 @@ def _draw_pause(surf, assets):
     surf.blit(t2, (WIN_W // 2 - t2.get_width() // 2, by + 108))
 
 
-def run_pygame_game(weapon_key, ability_key):
+def run_pygame_game(weapon_key, ability_key, skin_key="default", is_rank1=False, duel_sync=None):
     pygame.init()
     pygame.display.set_caption("Tung Tung Sahur — RUN!")
     screen = pygame.display.set_mode((WIN_W, WIN_H))
     clock  = pygame.time.Clock()
     assets = _load_assets()
-    game   = PygameGame(weapon_key, ability_key)
+    game   = PygameGame(weapon_key, ability_key, skin_key, is_rank1=is_rank1)
     paused = False
+    _last_net = 0.0
 
     while True:
         dt  = min(clock.tick(60) / 1000.0, 0.05)
@@ -2649,8 +3894,27 @@ def run_pygame_game(weapon_key, ability_key):
                     game.key_up(event.key)
 
         if not paused:
+            # Duel: apply Tung inputs from network and push game state
+            if duel_sync and now - _last_net > 0.12:
+                inp = duel_sync.get_input()
+                game._duel_inp = inp
+                plat_data = [[p.world_x - game.camera_x, p.y, p.half_w, p.is_temp]
+                             for p in game.platforms[-12:]]
+                duel_sync.push_state({
+                    "cam_x":    game.camera_x,
+                    "p_y":      game.p_y,
+                    "tung_sx":  game.tung_sx,
+                    "tung_y":   game.tung_y,
+                    "score":    game.score,
+                    "dead":     game.dead,
+                    "plats":    plat_data,
+                })
+                _last_net = now
             game.update(dt, now)
             if game.dead:
+                if duel_sync:
+                    duel_sync.push_state({"dead": True, "tung_won": False,
+                                          "cam_x":0,"p_y":0,"tung_sx":0,"tung_y":0,"score":game.score,"plats":[]})
                 pygame.quit()
                 return game.score, game.coins_col, int(game.elapsed * SCROLL_SPD / 100)
 
@@ -2752,7 +4016,7 @@ class SignupFrame(ctk.CTkFrame):
 
 
 class MainMenuFrame(ctk.CTkFrame):
-    def __init__(self, parent, pm, on_play, on_shop, on_locker, on_bp, on_lb, on_logout, on_quit):
+    def __init__(self, parent, pm, on_play, on_shop, on_locker, on_bp, on_lb, on_friends, on_messages, on_duel, on_logout, on_quit):
         super().__init__(parent, fg_color=C["bg"], corner_radius=0)
         self.columnconfigure(0, weight=1)
         for r in range(18): self.rowconfigure(r, weight=1)
@@ -2799,18 +4063,44 @@ class MainMenuFrame(ctk.CTkFrame):
                           width=190, height=42, corner_radius=8,
                           command=cmd).pack(side="left", padx=6)
 
-        ctk.CTkButton(self, text="LEADERBOARD", font=_font(14, "bold"),
+        # Pending friend requests badge
+        fd = pm.get_friends()
+        pending = len(fd.get("received", []))
+        friends_txt = f"FRIENDS  [{pending}]" if pending else "FRIENDS"
+
+        br_lb = ctk.CTkFrame(self, fg_color="transparent")
+        br_lb.grid(row=7, column=0, pady=4)
+        ctk.CTkButton(br_lb, text="LEADERBOARD", font=_font(13, "bold"),
                       fg_color=C["bg3"], hover_color=C["btn_hover"],
                       text_color="#9040c0", border_width=1, border_color="#9040c0",
-                      width=200, height=40, corner_radius=8,
-                      command=on_lb).grid(row=7, column=0, pady=4)
+                      width=170, height=40, corner_radius=8,
+                      command=on_lb).pack(side="left", padx=4)
+        ctk.CTkButton(br_lb, text=friends_txt, font=_font(13, "bold"),
+                      fg_color=C["bg3"], hover_color=C["btn_hover"],
+                      text_color=C["gold"] if pending else C["teal"],
+                      border_width=1, border_color=C["gold"] if pending else C["teal"],
+                      width=160, height=40, corner_radius=8,
+                      command=on_friends).pack(side="left", padx=4)
+
+        br_lb2 = ctk.CTkFrame(self, fg_color="transparent")
+        br_lb2.grid(row=8, column=0, pady=2)
+        ctk.CTkButton(br_lb2, text="MESSAGES", font=_font(13, "bold"),
+                      fg_color=C["bg3"], hover_color=C["btn_hover"],
+                      text_color=C["purple"], border_width=1, border_color=C["purple"],
+                      width=160, height=38, corner_radius=8,
+                      command=on_messages).pack(side="left", padx=4)
+        ctk.CTkButton(br_lb2, text="⚔ DUEL", font=_font(13, "bold"),
+                      fg_color=C["bg3"], hover_color=C["btn_hover"],
+                      text_color=C["pink"], border_width=1, border_color=C["pink"],
+                      width=140, height=38, corner_radius=8,
+                      command=on_duel).pack(side="left", padx=4)
 
         ctk.CTkLabel(self,
             text="WASD+Sword  ·  S+Air Slam  ·  E Platform  ·  F Gun/Mallet  ·  G Ability  ·  ESC Pause",
-            font=_font(11), text_color=C["grey"]).grid(row=8, column=0, pady=(12, 4))
+            font=_font(11), text_color=C["grey"]).grid(row=9, column=0, pady=(10, 2))
 
         br2 = ctk.CTkFrame(self, fg_color="transparent")
-        br2.grid(row=9, column=0, pady=4)
+        br2.grid(row=10, column=0, pady=4)
         _btn_ghost(br2, "LOG OUT", on_logout, width=150, border_color=C["teal"]).pack(side="left", padx=8)
         _btn_ghost(br2, "QUIT",    on_quit,   width=120, border_color=C["danger"]).pack(side="left", padx=8)
         _rule(self, C["purple"], height=2, row=17)
@@ -2998,7 +4288,7 @@ class LockerFrame(ctk.CTkFrame):
 
         body = ctk.CTkFrame(self, fg_color="transparent")
         body.grid(row=3, column=0, padx=60, sticky="ew")
-        body.columnconfigure((0, 1), weight=1)
+        body.columnconfigure((0, 1, 2), weight=1)
 
         # ── Left: Weapons ────────────────────────────────────────────
         wf = ctk.CTkFrame(body, fg_color=C["bg3"], corner_radius=12)
@@ -3009,7 +4299,7 @@ class LockerFrame(ctk.CTkFrame):
         self._wpn_frame = wf
         self._rebuild_wpn()
 
-        # ── Right: Abilities ─────────────────────────────────────────
+        # ── Middle: Abilities ────────────────────────────────────────
         af = ctk.CTkFrame(body, fg_color=C["bg3"], corner_radius=12)
         af.grid(row=0, column=1, padx=12, pady=8, sticky="nsew")
         af.columnconfigure(0, weight=1)
@@ -3017,6 +4307,15 @@ class LockerFrame(ctk.CTkFrame):
                      text_color=C["purple"]).grid(row=0, column=0, pady=(18, 8), padx=20, sticky="w")
         self._abl_frame = af
         self._rebuild_abl()
+
+        # ── Right: Skins ─────────────────────────────────────────────
+        sf = ctk.CTkFrame(body, fg_color=C["bg3"], corner_radius=12)
+        sf.grid(row=0, column=2, padx=12, pady=8, sticky="nsew")
+        sf.columnconfigure(0, weight=1)
+        ctk.CTkLabel(sf, text="SKIN", font=_font(18, "bold"),
+                     text_color=C["pink"]).grid(row=0, column=0, pady=(18, 8), padx=20, sticky="w")
+        self._skn_frame = sf
+        self._rebuild_skn()
 
         _btn_ghost(self, "BACK", on_back, width=180).grid(row=4, column=0, pady=16)
         _rule(self, C["pink"], height=2, row=13)
@@ -3080,11 +4379,27 @@ class LockerFrame(ctk.CTkFrame):
             ctk.CTkLabel(row_f, text="LOCKED", font=_font(11),
                          text_color=C["grey"]).grid(row=0, column=2, padx=12)
 
+    def _rebuild_skn(self):
+        for w in self._skn_frame.winfo_children():
+            if isinstance(w, ctk.CTkFrame): w.destroy()
+        rec = self.pm.current()
+        equipped = rec.get("current_skin", "default")
+        for ri, (key, skn) in enumerate(SKINS.items(), start=1):
+            owned = key == "default" or key in rec.get("owned_skins", [])
+            eq    = equipped == key
+            txt   = skn["name"] + ("" if owned else " 🔒")
+            clr   = skn["pg_color"]
+            self._locker_row(self._skn_frame, ri, key, txt, clr, eq,
+                             (lambda k=key: self._set_skn(k)) if owned else None)
+
     def _set_wpn(self, k):
         self.pm.equip_weapon(k); self._rebuild_wpn()
 
     def _set_abl(self, k):
         self.pm.equip_ability(k); self._rebuild_abl()
+
+    def _set_skn(self, k):
+        self.pm.equip_skin(k); self._rebuild_skn()
 
 
 class BattlePassFrame(ctk.CTkFrame):
@@ -3289,6 +4604,9 @@ class App(ctk.CTk):
                                 on_locker=self._show_locker,
                                 on_bp=self._show_bp,
                                 on_lb=self._show_lb,
+                                on_friends=self._show_friends,
+                                on_messages=self._show_messages,
+                                on_duel=self._show_duel,
                                 on_logout=self._logout,
                                 on_quit=self.quit))
 
@@ -3304,6 +4622,57 @@ class App(ctk.CTk):
     def _show_lb(self):
         self._set(LeaderboardFrame(self, self.pm, on_back=self.show_main_menu))
 
+    def _show_friends(self):
+        self._set(FriendsFrame(self, self.pm, on_back=self.show_main_menu))
+
+    def _show_messages(self):
+        self._set(MessagesFrame(self, self.pm, on_back=self.show_main_menu))
+
+    def _show_duel(self):
+        self._set(DuelFrame(self, self.pm,
+                            on_back=self.show_main_menu,
+                            on_lobby=self._show_duel_lobby))
+
+    def _show_duel_lobby(self, lobby_id, is_host):
+        self._set(DuelLobbyFrame(self, self.pm, lobby_id, is_host,
+                                 on_back=self._show_duel,
+                                 on_start=self._start_duel))
+
+    def _start_duel(self, lobby_id, role):
+        if self._fr: self._fr.destroy(); self._fr = None
+        self.after(80, lambda: self._run_duel(lobby_id, role))
+
+    def _run_duel(self, lobby_id, role):
+        self.withdraw()
+        try:
+            rec = self.pm.current()
+            wpn = rec.get("current_weapon", "none")
+            abl = rec.get("current_ability", "slam")
+            skn = rec.get("current_skin", "default")
+            sync = DuelNetSync(self.pm, lobby_id, role)
+            if role == "player":
+                score, coins, dist = run_pygame_game(wpn, abl, skn, duel_sync=sync)
+            else:
+                score, coins, dist = run_duel_as_tung(sync)
+            sync.stop()
+        finally:
+            self.deiconify()
+        import customtkinter as _ctk
+        over_f = ctk.CTkFrame(self, fg_color=C["bg"], corner_radius=0)
+        over_f.pack(fill="both", expand=True)
+        if self._fr: self._fr.destroy()
+        self._fr = over_f
+        over_f.columnconfigure(0, weight=1)
+        winner_txt = "YOU WIN! 🏆" if score == -1 else "TUNG WINS! 💀" if score == -2 else f"Score: {score:,}"
+        clr = C["teal"] if score == -1 else C["danger"] if score == -2 else C["pink"]
+        ctk.CTkLabel(over_f, text="DUEL OVER", font=_font(44, "bold"),
+                     text_color=C["pink"]).pack(pady=(60,4))
+        ctk.CTkLabel(over_f, text=winner_txt, font=_font(28, "bold"),
+                     text_color=clr).pack(pady=8)
+        ctk.CTkLabel(over_f, text="No coins or XP earned in duels.",
+                     font=_font(12), text_color=C["grey"]).pack(pady=4)
+        _btn_primary(over_f, "BACK TO MENU", self.show_main_menu).pack(pady=24)
+
     def _logout(self):
         self.pm.logout(); self.show_login()
 
@@ -3311,13 +4680,17 @@ class App(ctk.CTk):
         rec = self.pm.current()
         wpn = rec.get("current_weapon", "none")
         abl = rec.get("current_ability", "slam")
+        skn = rec.get("current_skin", "default")
         if self._fr: self._fr.destroy(); self._fr = None
-        self.after(80, lambda: self._run(wpn, abl))
+        self.after(80, lambda: self._run(wpn, abl, skn))
 
-    def _run(self, wpn, abl):
+    def _run(self, wpn, abl, skn="default"):
         self.withdraw()
         try:
-            score, coins, dist = run_pygame_game(wpn, abl)
+            lb = self.pm.leaderboard()
+            rank1_user = lb[0][0] if lb else None
+            is_rank1 = (rank1_user is not None and rank1_user == self.pm.current_user)
+            score, coins, dist = run_pygame_game(wpn, abl, skn, is_rank1=is_rank1)
         finally:
             self.deiconify()
         xp_earned = self.pm.add_run_result(score, coins)
