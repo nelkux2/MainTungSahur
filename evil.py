@@ -1979,20 +1979,23 @@ class DuelFrame(ctk.CTkFrame):
             return
         lobby = self.pm.duel_join(code)
         if lobby:
-            self.on_lobby(code, is_host=False)
+            # Override server default role — let guest choose explicitly
+            self.pm.duel_set_role(code, "player")
+            self.on_lobby(code, is_host=False, initial_lobby=lobby)
         else:
             self._err_lbl.configure(text="Lobby not found or full.")
 
 
 class DuelLobbyFrame(ctk.CTkFrame):
     """Waiting room — choose roles, start when both ready."""
-    def __init__(self, parent, pm, lobby_id, is_host, on_back, on_start):
+    def __init__(self, parent, pm, lobby_id, is_host, on_back, on_start, initial_lobby=None):
         super().__init__(parent, fg_color=C["bg"], corner_radius=0)
         self.pm = pm
         self.lobby_id = lobby_id
         self.is_host  = is_host
         self.on_start = on_start
         self._poll_id = None
+        self._my_user = pm.current_user  # cache so guest can always find themselves
         self.columnconfigure(0, weight=1)
         for r in range(16): self.rowconfigure(r, weight=1)
         _rule(self, C["pink"], row=0)
@@ -2025,6 +2028,9 @@ class DuelLobbyFrame(ctk.CTkFrame):
 
         _btn_ghost(self, "LEAVE", on_back, width=180, border_color=C["danger"]).grid(row=6, column=0, pady=4)
         _rule(self, C["purple"], height=2, row=15)
+        # Render initial lobby immediately (avoids blank flash on join)
+        if initial_lobby:
+            self._render_lobby(initial_lobby)
         self._poll()
 
     def _poll(self):
@@ -2033,18 +2039,22 @@ class DuelLobbyFrame(ctk.CTkFrame):
             self._render_lobby(lobby)
             if lobby.get("status") == "playing":
                 if self._poll_id: self.after_cancel(self._poll_id)
-                my_role = (lobby["host_role"] if self.pm.current_user == lobby["host"]
+                my_role = (lobby["host_role"] if self._my_user == lobby["host"]
                            else lobby.get("guest_role", "player"))
                 self.on_start(self.lobby_id, my_role)
                 return
-        self._poll_id = self.after(1500, self._poll)
+        self._poll_id = self.after(800, self._poll)
 
     def _render_lobby(self, lobby):
         for w in self._players_frame.winfo_children(): w.destroy()
-        my_user = self.pm.current_user
+        my_user = self._my_user
+        # If we are the guest, inject ourselves into the lobby data so we
+        # always appear in slot 2 even if the server hasn't echoed us back yet
+        guest_name = lobby.get("guest") or (my_user if not self.is_host else None)
+        guest_role = lobby.get("guest_role") or "player"
         for col, (uname, role) in enumerate([
             (lobby["host"],  lobby["host_role"]),
-            (lobby.get("guest","—"), lobby.get("guest_role","—")),
+            (guest_name,     guest_role),
         ]):
             pf = ctk.CTkFrame(self._players_frame, fg_color=C["bg3"], corner_radius=10)
             pf.grid(row=0, column=col, padx=12, pady=4, sticky="nsew")
@@ -2084,7 +2094,7 @@ class DuelLobbyFrame(ctk.CTkFrame):
         if self.pm.duel_start(self.lobby_id):
             lobby = self.pm.duel_get(self.lobby_id)
             if lobby:
-                my_role = (lobby["host_role"] if self.pm.current_user == lobby["host"]
+                my_role = (lobby["host_role"] if self._my_user == lobby["host"]
                            else lobby.get("guest_role", "player"))
                 if self._poll_id: self.after_cancel(self._poll_id)
                 self.on_start(self.lobby_id, my_role)
@@ -2410,20 +2420,23 @@ class DuelFrame(ctk.CTkFrame):
             return
         lobby = self.pm.duel_join(code)
         if lobby:
-            self.on_lobby(code, is_host=False)
+            # Override server default role — let guest choose explicitly
+            self.pm.duel_set_role(code, "player")
+            self.on_lobby(code, is_host=False, initial_lobby=lobby)
         else:
             self._err_lbl.configure(text="Lobby not found or full.")
 
 
 class DuelLobbyFrame(ctk.CTkFrame):
     """Waiting room — choose roles, start when both ready."""
-    def __init__(self, parent, pm, lobby_id, is_host, on_back, on_start):
+    def __init__(self, parent, pm, lobby_id, is_host, on_back, on_start, initial_lobby=None):
         super().__init__(parent, fg_color=C["bg"], corner_radius=0)
         self.pm = pm
         self.lobby_id = lobby_id
         self.is_host  = is_host
         self.on_start = on_start
         self._poll_id = None
+        self._my_user = pm.current_user  # cache so guest can always find themselves
         self.columnconfigure(0, weight=1)
         for r in range(16): self.rowconfigure(r, weight=1)
         _rule(self, C["pink"], row=0)
@@ -2456,6 +2469,9 @@ class DuelLobbyFrame(ctk.CTkFrame):
 
         _btn_ghost(self, "LEAVE", on_back, width=180, border_color=C["danger"]).grid(row=6, column=0, pady=4)
         _rule(self, C["purple"], height=2, row=15)
+        # Render initial lobby immediately (avoids blank flash on join)
+        if initial_lobby:
+            self._render_lobby(initial_lobby)
         self._poll()
 
     def _poll(self):
@@ -2464,18 +2480,22 @@ class DuelLobbyFrame(ctk.CTkFrame):
             self._render_lobby(lobby)
             if lobby.get("status") == "playing":
                 if self._poll_id: self.after_cancel(self._poll_id)
-                my_role = (lobby["host_role"] if self.pm.current_user == lobby["host"]
+                my_role = (lobby["host_role"] if self._my_user == lobby["host"]
                            else lobby.get("guest_role", "player"))
                 self.on_start(self.lobby_id, my_role)
                 return
-        self._poll_id = self.after(1500, self._poll)
+        self._poll_id = self.after(800, self._poll)
 
     def _render_lobby(self, lobby):
         for w in self._players_frame.winfo_children(): w.destroy()
-        my_user = self.pm.current_user
+        my_user = self._my_user
+        # If we are the guest, inject ourselves into the lobby data so we
+        # always appear in slot 2 even if the server hasn't echoed us back yet
+        guest_name = lobby.get("guest") or (my_user if not self.is_host else None)
+        guest_role = lobby.get("guest_role") or "player"
         for col, (uname, role) in enumerate([
             (lobby["host"],  lobby["host_role"]),
-            (lobby.get("guest","—"), lobby.get("guest_role","—")),
+            (guest_name,     guest_role),
         ]):
             pf = ctk.CTkFrame(self._players_frame, fg_color=C["bg3"], corner_radius=10)
             pf.grid(row=0, column=col, padx=12, pady=4, sticky="nsew")
@@ -2515,7 +2535,7 @@ class DuelLobbyFrame(ctk.CTkFrame):
         if self.pm.duel_start(self.lobby_id):
             lobby = self.pm.duel_get(self.lobby_id)
             if lobby:
-                my_role = (lobby["host_role"] if self.pm.current_user == lobby["host"]
+                my_role = (lobby["host_role"] if self._my_user == lobby["host"]
                            else lobby.get("guest_role", "player"))
                 if self._poll_id: self.after_cancel(self._poll_id)
                 self.on_start(self.lobby_id, my_role)
@@ -2770,10 +2790,11 @@ class App(ctk.CTk):
                             on_back=self.show_main_menu,
                             on_lobby=self._show_duel_lobby))
 
-    def _show_duel_lobby(self, lobby_id, is_host):
+    def _show_duel_lobby(self, lobby_id, is_host, initial_lobby=None):
         self._set(DuelLobbyFrame(self, self.pm, lobby_id, is_host,
                                  on_back=self._show_duel,
-                                 on_start=self._start_duel))
+                                 on_start=self._start_duel,
+                                 initial_lobby=initial_lobby))
 
     def _start_duel(self, lobby_id, role):
         if self._fr: self._fr.destroy(); self._fr = None
