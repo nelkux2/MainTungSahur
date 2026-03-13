@@ -11,7 +11,7 @@ import sys, os, json, urllib.request, urllib.parse, urllib.error
 import time
 
 # ── Version & update config ───────────────────────────────────────────
-LAUNCHER_VERSION = "1.0.0"
+LAUNCHER_VERSION = "2.0.0"
 
 # GitHub raw URLs — update GITHUB_REPO to your actual repo path
 GITHUB_REPO      = "nelkux2/MainTungSahur"  # e.g. "YourUser/tung-tung-run"
