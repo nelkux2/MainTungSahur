@@ -34,15 +34,15 @@ WIN_W, WIN_H   = 1080, 720
 PLRDATA_FILE   = "L_PLRDATA"
 
 WEAPONS = {
-    "sword":  {"name": "Sword",  "price":  50, "stun": 1.0, "cooldown": 1.2,
+    "sword":  {"name": "Sword",  "price":  50, "stun": 1.0, "cooldown": 5.0, "damage": 12,
                "color": (136, 170, 255), "pg_color": "#88aaff",
-               "desc": "Directional slash (WASD) — 1 s stun"},
-    "gun":    {"name": "Gun",    "price": 150, "stun": 3.0, "cooldown": 4.5,
+               "desc": "[F] Slash in movement direction — 0.5 s swing, 5 s cooldown"},
+    "gun":    {"name": "Gun",    "price": 150, "stun": 1.5, "cooldown": 4.5, "damage": 20,
                "color": (255, 136, 136), "pg_color": "#ff8888",
-               "desc": "Ranged [F] shot — 3 s stun"},
-    "mallet": {"name": "Mallet", "price": 300, "stun": 5.0, "cooldown": 6.0,
+               "desc": "Ranged [F] shot — 1.5 s stun"},
+    "mallet": {"name": "Mallet", "price": 300, "stun": 2.5, "cooldown": 6.0, "damage": 34,
                "color": (136, 255, 170), "pg_color": "#88ffaa",
-               "desc": "Heavy [F] blow — 5 s stun"},
+               "desc": "Heavy [F] blow — 2.5 s stun"},
 }
 
 ABILITIES = {
@@ -315,8 +315,10 @@ _SWORD_PTS = [
     (-20, 0), (-14, -6), (0, -6), (8, -10), (16, -4),
 ]
 SWORD_ANGS  = {"w": -90, "a": 180, "s": 90, "d": 0}
-SWORD_RANGE = 135.0
+SWORD_RANGE = 80.0
 SWORD_ARC   = 68.0
+SWORD_SWING_DUR = 0.5
+TUNG_MAX_HP = 100
 
 
 def _rot_pts(pts, angle_deg, cx, cy):
@@ -393,8 +395,11 @@ class PygameGame:
         self._prev_slam = False
 
         # Sword
-        self._sk         = []
-        self._sword_last = -999.0
+        self._sk              = []
+        self._sword_last      = -999.0
+        self._sword_swing_end = 0.0
+        self._sword_dir       = "d"
+        self._sword_hit_done  = False
 
         # Projectile
         self._proj     = False
@@ -419,6 +424,7 @@ class PygameGame:
         self.tung_spd     = TUNG_BASE_SPD
         self.tung_stun    = 0.0
         self.tung_apex    = False
+        self.tung_hp      = TUNG_MAX_HP
 
         self.plat_last_t  = -PLAT_COOLDOWN
         self.platforms    = []
@@ -521,8 +527,19 @@ class PygameGame:
                        is_temp=True, expiry=now + TEMP_PLAT_LIFE)
 
     def _fire(self):
-        if self.weapon_key not in ("gun", "mallet"): return
         now = time.time()
+
+        if self.weapon_key == "sword":
+            if now - self._sword_last < WEAPONS["sword"]["cooldown"]: return
+            move_keys = [k for k in reversed(self._sk) if k in SWORD_ANGS]
+            if not move_keys: return
+            self._sword_dir = move_keys[0]
+            self._sword_last = now
+            self._sword_swing_end = now + SWORD_SWING_DUR
+            self._sword_hit_done = False
+            return
+
+        if self.weapon_key not in ("gun", "mallet"): return
         if now - self._wpn_last < WEAPONS[self.weapon_key]["cooldown"]: return
         gap = PLAYER_SX - self.tung_sx
         if gap > 720 or gap < -70: return
@@ -668,20 +685,19 @@ class PygameGame:
         self.coins = alive_c
 
         # Sword hit
-        if self.weapon_key == "sword" and self._sk:
-            sk = self._sk[-1]
-            if sk in SWORD_ANGS and (now - self._sword_last) >= WEAPONS["sword"]["cooldown"]:
-                ang  = SWORD_ANGS[sk]
-                t_cx = self.tung_sx
-                t_cy = self.tung_y  + TUNG_H   / 2
-                p_cy = self.p_y     + PLAYER_H  / 2
-                dist = math.hypot(t_cx - PLAYER_SX, t_cy - p_cy)
-                if dist <= SWORD_RANGE:
-                    a2t  = math.degrees(math.atan2(t_cy - p_cy, t_cx - PLAYER_SX))
-                    diff = abs((a2t - ang + 180) % 360 - 180)
-                    if diff <= SWORD_ARC:
-                        self._sword_last = now
-                        self.tung_stun   = now + WEAPONS["sword"]["stun"]
+        if self.weapon_key == "sword" and now <= self._sword_swing_end and not self._sword_hit_done:
+            ang  = SWORD_ANGS[self._sword_dir]
+            t_cx = self.tung_sx
+            t_cy = self.tung_y  + TUNG_H   / 2
+            p_cy = self.p_y     + PLAYER_H  / 2
+            dist = math.hypot(t_cx - PLAYER_SX, t_cy - p_cy)
+            if dist <= SWORD_RANGE:
+                a2t  = math.degrees(math.atan2(t_cy - p_cy, t_cx - PLAYER_SX))
+                diff = abs((a2t - ang + 180) % 360 - 180)
+                if diff <= SWORD_ARC:
+                    self._sword_hit_done = True
+                    self.tung_stun = now + WEAPONS["sword"]["stun"]
+                    self.tung_hp = max(0, self.tung_hp - WEAPONS["sword"]["damage"])
 
         # Projectile
         if self._proj:
@@ -691,6 +707,7 @@ class PygameGame:
             if d < 12:
                 self._proj     = False
                 self.tung_stun = now + WEAPONS[self.weapon_key]["stun"]
+                self.tung_hp = max(0, self.tung_hp - WEAPONS[self.weapon_key]["damage"])
             else:
                 step = 640.0 * dt
                 frac = min(1.0, step / d)
@@ -706,6 +723,10 @@ class PygameGame:
             self.score    += STOMP_SCORE
 
         # Death
+        if self.tung_hp <= 0:
+            self.score += 250
+            self.dead = True
+            return
         if self.p_y > PLAY_H + 60:
             self.dead = True; return
         if (not self.p_slam and now > self.tung_stun and
@@ -740,10 +761,9 @@ class PygameGame:
                 pygame.draw.circle(surf, PG["bg"],   (csx, int(c.y)), max(1, pulse - 4))
 
         # Sword
-        if self.weapon_key == "sword" and self._sk and self._sk[-1] in SWORD_ANGS:
-            sk   = self._sk[-1]
-            ang  = SWORD_ANGS[sk]
-            swng = math.degrees(math.sin(now * 13) * 0.38)
+        if self.weapon_key == "sword" and now <= self._sword_swing_end:
+            ang  = SWORD_ANGS[self._sword_dir]
+            swng = math.degrees(math.sin(now * 18) * 0.38)
             pts  = _rot_pts(_SWORD_PTS, ang + swng,
                             float(PLAYER_SX), self.p_y + PLAYER_H / 2)
             pygame.draw.polygon(surf, PG["sword"], pts)
@@ -838,6 +858,7 @@ class PygameGame:
         blt(f"COINS  {self.coins_col}", PG["coin"])
         dist_m = int(self.elapsed * SCROLL_SPD / 100)
         blt(f"DIST  {dist_m} m", PG["teal"])
+        blt(f"TUNG HP  {self.tung_hp}/{TUNG_MAX_HP}", PG["danger"] if self.tung_hp < 30 else PG["gold"], sm)
 
         # Platform bar
         lbl = sm.render("[E]", True, PG["grey"])
@@ -885,7 +906,7 @@ class PygameGame:
             blt("▼ SLAM", PG["p_slam"])
 
         hint = sm.render(
-            "WASD Sword/Move  S+Air Slam  E Platform  F Gun/Mallet  G Ability  ESC Pause  Q Quit",
+            "WASD Move/Aim  S+Air Slam  E Platform  F Weapon  G Ability  ESC Pause  Q Quit",
             True, PG["grey"])
         surf.blit(hint, (WIN_W - hint.get_width() - 14, hy + 52))
 
@@ -1678,15 +1699,15 @@ WIN_W, WIN_H   = 1080, 720
 PLRDATA_FILE   = "L_PLRDATA"
 
 WEAPONS = {
-    "sword":  {"name": "Sword",  "price":  50, "stun": 1.0, "cooldown": 1.2,
+    "sword":  {"name": "Sword",  "price":  50, "stun": 1.0, "cooldown": 5.0, "damage": 12,
                "color": (136, 170, 255), "pg_color": "#88aaff",
-               "desc": "Directional slash (WASD) — 1 s stun"},
-    "gun":    {"name": "Gun",    "price": 150, "stun": 3.0, "cooldown": 4.5,
+               "desc": "[F] Slash in movement direction — 0.5 s swing, 5 s cooldown"},
+    "gun":    {"name": "Gun",    "price": 150, "stun": 1.5, "cooldown": 4.5, "damage": 20,
                "color": (255, 136, 136), "pg_color": "#ff8888",
-               "desc": "Ranged [F] shot — 3 s stun"},
-    "mallet": {"name": "Mallet", "price": 300, "stun": 5.0, "cooldown": 6.0,
+               "desc": "Ranged [F] shot — 1.5 s stun"},
+    "mallet": {"name": "Mallet", "price": 300, "stun": 2.5, "cooldown": 6.0, "damage": 34,
                "color": (136, 255, 170), "pg_color": "#88ffaa",
-               "desc": "Heavy [F] blow — 5 s stun"},
+               "desc": "Heavy [F] blow — 2.5 s stun"},
 }
 
 ABILITIES = {
@@ -1959,8 +1980,10 @@ _SWORD_PTS = [
     (-20, 0), (-14, -6), (0, -6), (8, -10), (16, -4),
 ]
 SWORD_ANGS  = {"w": -90, "a": 180, "s": 90, "d": 0}
-SWORD_RANGE = 135.0
+SWORD_RANGE = 80.0
 SWORD_ARC   = 68.0
+SWORD_SWING_DUR = 0.5
+TUNG_MAX_HP = 100
 
 
 def _rot_pts(pts, angle_deg, cx, cy):
@@ -2037,8 +2060,11 @@ class PygameGame:
         self._prev_slam = False
 
         # Sword
-        self._sk         = []
-        self._sword_last = -999.0
+        self._sk              = []
+        self._sword_last      = -999.0
+        self._sword_swing_end = 0.0
+        self._sword_dir       = "d"
+        self._sword_hit_done  = False
 
         # Projectile
         self._proj     = False
@@ -2063,6 +2089,7 @@ class PygameGame:
         self.tung_spd     = TUNG_BASE_SPD
         self.tung_stun    = 0.0
         self.tung_apex    = False
+        self.tung_hp      = TUNG_MAX_HP
 
         self.plat_last_t  = -PLAT_COOLDOWN
         self.platforms    = []
@@ -2165,8 +2192,19 @@ class PygameGame:
                        is_temp=True, expiry=now + TEMP_PLAT_LIFE)
 
     def _fire(self):
-        if self.weapon_key not in ("gun", "mallet"): return
         now = time.time()
+
+        if self.weapon_key == "sword":
+            if now - self._sword_last < WEAPONS["sword"]["cooldown"]: return
+            move_keys = [k for k in reversed(self._sk) if k in SWORD_ANGS]
+            if not move_keys: return
+            self._sword_dir = move_keys[0]
+            self._sword_last = now
+            self._sword_swing_end = now + SWORD_SWING_DUR
+            self._sword_hit_done = False
+            return
+
+        if self.weapon_key not in ("gun", "mallet"): return
         if now - self._wpn_last < WEAPONS[self.weapon_key]["cooldown"]: return
         gap = PLAYER_SX - self.tung_sx
         if gap > 720 or gap < -70: return
@@ -2312,20 +2350,19 @@ class PygameGame:
         self.coins = alive_c
 
         # Sword hit
-        if self.weapon_key == "sword" and self._sk:
-            sk = self._sk[-1]
-            if sk in SWORD_ANGS and (now - self._sword_last) >= WEAPONS["sword"]["cooldown"]:
-                ang  = SWORD_ANGS[sk]
-                t_cx = self.tung_sx
-                t_cy = self.tung_y  + TUNG_H   / 2
-                p_cy = self.p_y     + PLAYER_H  / 2
-                dist = math.hypot(t_cx - PLAYER_SX, t_cy - p_cy)
-                if dist <= SWORD_RANGE:
-                    a2t  = math.degrees(math.atan2(t_cy - p_cy, t_cx - PLAYER_SX))
-                    diff = abs((a2t - ang + 180) % 360 - 180)
-                    if diff <= SWORD_ARC:
-                        self._sword_last = now
-                        self.tung_stun   = now + WEAPONS["sword"]["stun"]
+        if self.weapon_key == "sword" and now <= self._sword_swing_end and not self._sword_hit_done:
+            ang  = SWORD_ANGS[self._sword_dir]
+            t_cx = self.tung_sx
+            t_cy = self.tung_y  + TUNG_H   / 2
+            p_cy = self.p_y     + PLAYER_H  / 2
+            dist = math.hypot(t_cx - PLAYER_SX, t_cy - p_cy)
+            if dist <= SWORD_RANGE:
+                a2t  = math.degrees(math.atan2(t_cy - p_cy, t_cx - PLAYER_SX))
+                diff = abs((a2t - ang + 180) % 360 - 180)
+                if diff <= SWORD_ARC:
+                    self._sword_hit_done = True
+                    self.tung_stun = now + WEAPONS["sword"]["stun"]
+                    self.tung_hp = max(0, self.tung_hp - WEAPONS["sword"]["damage"])
 
         # Projectile
         if self._proj:
@@ -2335,6 +2372,7 @@ class PygameGame:
             if d < 12:
                 self._proj     = False
                 self.tung_stun = now + WEAPONS[self.weapon_key]["stun"]
+                self.tung_hp = max(0, self.tung_hp - WEAPONS[self.weapon_key]["damage"])
             else:
                 step = 640.0 * dt
                 frac = min(1.0, step / d)
@@ -2350,6 +2388,10 @@ class PygameGame:
             self.score    += STOMP_SCORE
 
         # Death
+        if self.tung_hp <= 0:
+            self.score += 250
+            self.dead = True
+            return
         if self.p_y > PLAY_H + 60:
             self.dead = True; return
         if (not self.p_slam and now > self.tung_stun and
@@ -2384,10 +2426,9 @@ class PygameGame:
                 pygame.draw.circle(surf, PG["bg"],   (csx, int(c.y)), max(1, pulse - 4))
 
         # Sword
-        if self.weapon_key == "sword" and self._sk and self._sk[-1] in SWORD_ANGS:
-            sk   = self._sk[-1]
-            ang  = SWORD_ANGS[sk]
-            swng = math.degrees(math.sin(now * 13) * 0.38)
+        if self.weapon_key == "sword" and now <= self._sword_swing_end:
+            ang  = SWORD_ANGS[self._sword_dir]
+            swng = math.degrees(math.sin(now * 18) * 0.38)
             pts  = _rot_pts(_SWORD_PTS, ang + swng,
                             float(PLAYER_SX), self.p_y + PLAYER_H / 2)
             pygame.draw.polygon(surf, PG["sword"], pts)
@@ -2482,6 +2523,7 @@ class PygameGame:
         blt(f"COINS  {self.coins_col}", PG["coin"])
         dist_m = int(self.elapsed * SCROLL_SPD / 100)
         blt(f"DIST  {dist_m} m", PG["teal"])
+        blt(f"TUNG HP  {self.tung_hp}/{TUNG_MAX_HP}", PG["danger"] if self.tung_hp < 30 else PG["gold"], sm)
 
         # Platform bar
         lbl = sm.render("[E]", True, PG["grey"])
@@ -2529,7 +2571,7 @@ class PygameGame:
             blt("▼ SLAM", PG["p_slam"])
 
         hint = sm.render(
-            "WASD Sword/Move  S+Air Slam  E Platform  F Gun/Mallet  G Ability  ESC Pause  Q Quit",
+            "WASD Move/Aim  S+Air Slam  E Platform  F Weapon  G Ability  ESC Pause  Q Quit",
             True, PG["grey"])
         surf.blit(hint, (WIN_W - hint.get_width() - 14, hy + 52))
 
