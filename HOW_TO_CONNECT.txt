@@ -28,6 +28,16 @@ HOW IT WORKS:
   - The leaderboard shows all players from the website
   - All data lives in the cloud — no port forwarding needed!
 
+
+CONNECTION TROUBLESHOOTING:
+  If you see: "Could not reach update server" or "Cannot reach server":
+  - This can be a blocked network/proxy, or the server URL is down
+  - Set a custom server for this run:
+      Linux/macOS:  TUNG_SERVER_URL=https://YOUR-SERVER/api python tung_online.py
+      Windows:      set TUNG_SERVER_URL=https://YOUR-SERVER/api && python tung_online.py
+  - Or create/edit tung_config.json:
+      {"server_url": "https://YOUR-SERVER/api"}
+
 PLAY OFFLINE:
   - Leave the server URL blank when prompted
   - The game saves data locally in L_PLRDATA_LOCAL

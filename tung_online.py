@@ -28,7 +28,50 @@ UPDATE_FILES = {
 VERSION_FILE_URL = f"{GITHUB_RAW}/version.txt"
 
 # ── Server configuration ──────────────────────────────────────────────
-SERVER_URL = "https://tung-tung-run.glalunderedu.workers.dev/api"
+DEFAULT_SERVER_URL = "https://tung-tung-run.glalunderedu.workers.dev/api"
+CONFIG_FILE = "tung_config.json"
+
+
+def _normalize_server_url(raw):
+    """Return a normalized API URL or an empty string for offline mode."""
+    value = (raw or "").strip()
+    if not value:
+        return ""
+    if not value.startswith(("http://", "https://")):
+        value = "https://" + value
+    value = value.rstrip("/")
+    if not value.endswith("/api"):
+        value += "/api"
+    return value
+
+
+def _load_server_url():
+    """Load the server URL from env/config, with sane defaults."""
+    env_url = os.getenv("TUNG_SERVER_URL")
+    if env_url is not None:
+        return _normalize_server_url(env_url)
+
+    try:
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        if isinstance(cfg, dict):
+            return _normalize_server_url(cfg.get("server_url"))
+    except Exception:
+        pass
+
+    return _normalize_server_url(DEFAULT_SERVER_URL)
+
+
+def _save_server_url(server_url):
+    """Persist the selected server URL for future launches."""
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump({"server_url": server_url}, f, indent=2)
+    except Exception:
+        pass
+
+
+SERVER_URL = _load_server_url()
 
 # ── Auto-updater ──────────────────────────────────────────────────────
 
@@ -470,8 +513,10 @@ def main():
     ok, body = _api("GET", "/healthz")
     if not ok:
         print(f"[WARNING] Cannot reach server. Playing offline.")
+        print("          Tip: set TUNG_SERVER_URL or edit tung_config.json with a working server.")
     else:
         print(f"[OK] Connected to server.")
+        _save_server_url(SERVER_URL)
 
     # Monkey-patch evil.py's PlayerManager with OnlinePlayerManager
     import evil  # type: ignore
