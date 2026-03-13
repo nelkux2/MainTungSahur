@@ -28,7 +28,7 @@ UPDATE_FILES = {
 VERSION_FILE_URL = f"{GITHUB_RAW}/version.txt"
 
 # ── Server configuration ──────────────────────────────────────────────
-DEFAULT_SERVER_URL = "https://tung-tung-run.glalunderedu.workers.dev/api"
+DEFAULT_SERVER_URL = "https://www.perspectiveproductions.uk/api"
 CONFIG_FILE = "tung_config.json"
 
 
@@ -77,10 +77,24 @@ SERVER_URL = _load_server_url()
 
 def _fetch_text(url, timeout=8):
     """Fetch a URL and return the text body, or None on failure."""
+    import ssl
     try:
         with urllib.request.urlopen(url, timeout=timeout) as r:
             return r.read().decode("utf-8")
-    except Exception:
+    except ssl.SSLError as e:
+        print(f"[net] SSL error fetching {url}: {e}")
+        # Retry without cert verification as fallback
+        try:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            with urllib.request.urlopen(url, timeout=timeout, context=ctx) as r:
+                return r.read().decode("utf-8")
+        except Exception as e2:
+            print(f"[net] SSL fallback also failed: {e2}")
+            return None
+    except Exception as e:
+        print(f"[net] Failed to fetch {url}: {e}")
         return None
 
 
@@ -199,23 +213,50 @@ def _restart(root=None):
 # ── HTTP helpers ──────────────────────────────────────────────────────
 def _api(method, path, data=None, params=None):
     """Make an HTTP request to the server. Returns (ok, body_dict)."""
+    import ssl
+    if not SERVER_URL:
+        return False, {"error": "No server URL configured (offline mode)."}
     url = SERVER_URL + path
     if params:
         url += "?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url, method=method)
-    req.add_header("Content-Type", "application/json")
+    req.add_header("User-Agent", "Mozilla/5.0 (compatible; TungTungClient/1.0)")
+    # Only set Content-Type for requests that send a body
     body = None
     if data is not None:
         body = json.dumps(data).encode()
-    try:
-        with urllib.request.urlopen(req, body, timeout=8) as resp:
+        req.add_header("Content-Type", "application/json")
+
+    def _do_request(context=None):
+        kwargs = {"timeout": 8}
+        if context:
+            kwargs["context"] = context
+        with urllib.request.urlopen(req, body, **kwargs) as resp:
             return True, json.loads(resp.read())
+
+    try:
+        return _do_request()
+    except ssl.SSLError as e:
+        print(f"[net] SSL error on {method} {path}: {e} — retrying without cert check")
+        try:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            return _do_request(context=ctx)
+        except Exception as e2:
+            return False, {"error": f"SSL fallback failed: {e2}"}
     except urllib.error.HTTPError as e:
         try:
-            return False, json.loads(e.read())
+            err_body = json.loads(e.read())
         except Exception:
-            return False, {"error": str(e)}
+            err_body = {"error": str(e)}
+        print(f"[net] HTTP {e.code} on {method} {path}: {err_body}")
+        return False, err_body
+    except urllib.error.URLError as e:
+        print(f"[net] Connection error on {method} {path}: {e.reason}")
+        return False, {"error": str(e.reason)}
     except Exception as e:
+        print(f"[net] Unexpected error on {method} {path}: {e}")
         return False, {"error": str(e)}
 
 
@@ -509,14 +550,24 @@ def main():
     # Check for updates before launching
     check_and_update()
 
-    # Test server connection
-    ok, body = _api("GET", "/healthz")
-    if not ok:
-        print(f"[WARNING] Cannot reach server. Playing offline.")
-        print("          Tip: set TUNG_SERVER_URL or edit tung_config.json with a working server.")
+    # Test server connection.
+    # Any HTTP response (even 404) means the server is reachable.
+    # Only network-level errors (DNS, refused, timeout) mean truly offline.
+    if SERVER_URL:
+        print(f"[net] Connecting to {SERVER_URL} ...")
+        ok, body = _api("GET", "/leaderboard")
+        err = body.get("error", "") if isinstance(body, dict) else ""
+        network_fail = any(k in err.lower() for k in
+                           ("resolve", "refused", "timed out", "timeout", "network unreachable", "errno"))
+        if ok or not network_fail:
+            print(f"[OK] Connected to server.")
+            _save_server_url(SERVER_URL)
+        else:
+            print(f"[WARNING] Cannot reach server: {err}")
+            print("          Tip: set TUNG_SERVER_URL or edit tung_config.json with a working server.")
+            print("          Playing offline.")
     else:
-        print(f"[OK] Connected to server.")
-        _save_server_url(SERVER_URL)
+        print("[INFO] No server URL configured — playing offline.")
 
     # Monkey-patch evil.py's PlayerManager with OnlinePlayerManager
     import evil  # type: ignore
