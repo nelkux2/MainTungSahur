@@ -1,0 +1,39 @@
+═══════════════════════════════════════════════════════
+   TUNG TUNG SAHUR RUN — ONLINE MULTIPLAYER SETUP
+═══════════════════════════════════════════════════════
+
+WHAT YOU NEED:
+  - Python 3.9+
+  - The original game file: evil.py
+  - These new files: tung_online.py
+
+INSTALL REQUIREMENTS:
+  pip install customtkinter pygame
+
+FIRST TIME SETUP:
+  1. Put evil.py and tung_online.py in the same folder
+  2. Run:  python tung_online.py
+  3. A dialog will ask for the server URL.
+     Enter:  https://YOUR-REPLIT-APP.replit.app/api
+     (Your friend who runs the server will give you this URL)
+  4. Click OK — the game launches!
+
+AFTER FIRST SETUP:
+  Just run:  python tung_online.py
+  Your settings are saved in tung_config.json
+
+HOW IT WORKS:
+  - Your account (login/signup) is stored on the shared server
+  - Scores sync automatically after each run
+  - The leaderboard shows all players from the website
+  - All data lives in the cloud — no port forwarding needed!
+
+PLAY OFFLINE:
+  - Leave the server URL blank when prompted
+  - The game saves data locally in L_PLRDATA_LOCAL
+
+WEBSITE:
+  Visit the server URL (without /api) to see the live
+  leaderboard and server URL to share with friends.
+
+═══════════════════════════════════════════════════════
