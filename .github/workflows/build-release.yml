@@ -31,6 +31,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest     # must be Windows to build a Windows exe
+    permissions:
+      contents: write           # required to create/update GitHub Releases
 
     steps:
       # ── 1. Checkout ────────────────────────────────────────────────
@@ -79,7 +81,7 @@ jobs:
           files: dist/TungTungRun.exe
           draft: false
           prerelease: false
-          overwrite_existing_files: true
+          overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
