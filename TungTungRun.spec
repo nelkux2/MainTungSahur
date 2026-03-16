@@ -15,12 +15,9 @@ block_cipher = None
 
 # ── Collect all data for bundled packages ────────────────────────────────────
 ctk_datas, ctk_binaries, ctk_hiddenimports = collect_all("customtkinter")
-# pygame data (fonts, etc.)
 pygame_datas = collect_data_files("pygame")
 
 # ── Game assets & scripts to bundle ─────────────────────────────────────────
-# These are copied into the exe's extraction dir at runtime.
-# The launcher will copy them to APPDATA on first launch.
 game_datas = [
     ("tung.png",            "."),
     ("Crown.png",           "."),
@@ -51,8 +48,11 @@ a = Analysis(
         "customtkinter",
         "cryptography", "cryptography.fernet",
         "hashlib", "hmac",
-        # network
+        # network — urllib.request depends on email & http internally
         "ssl", "urllib.request", "urllib.parse", "urllib.error",
+        "email", "email.message", "email.parser", "email.feedparser",
+        "email.header", "email.charset", "email.encoders",
+        "http", "http.client", "http.cookiejar",
         # json / threading
         "json", "threading",
     ],
@@ -60,10 +60,10 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        # Exclude things we definitely don't need to keep size down
+        # Only exclude things with no stdlib dependents
         "matplotlib", "numpy", "scipy", "pandas",
         "PIL", "Pillow",
-        "email", "html", "http", "xmlrpc",
+        "xmlrpc",
         "unittest", "doctest", "pdb",
         "tkinter.test",
     ],
@@ -86,10 +86,10 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,             # compress if UPX is installed
+    upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,        # ← No console / cmd window
+    console=False,        # No console / cmd window
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
