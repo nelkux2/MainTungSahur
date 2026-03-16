@@ -1,0 +1,93 @@
+# .github/workflows/build-release.yml
+#
+# Triggers on every push to main (or when you manually trigger it).
+# ─────────────────────────────────────────────────────────────────────────────
+# What it does:
+#   1. Installs Python 3.12 + all game dependencies
+#   2. Runs PyInstaller using TungTungRun.spec
+#   3. Reads the version from version.txt
+#   4. Creates / overwrites a GitHub Release tag matching that version
+#   5. Attaches TungTungRun.exe to the release
+#
+# Users who already have the launcher get notified automatically on next launch
+# because the launcher checks the GitHub Releases API for a newer exe.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Build & Release TungTungRun.exe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # Rebuild whenever game logic OR build config changes
+      - "evil.py"
+      - "tung_online.py"
+      - "launcher.py"
+      - "TungTungRun.spec"
+      - "version.txt"
+      - ".github/workflows/build-release.yml"
+  workflow_dispatch:   # allow manual trigger from the GitHub Actions tab
+
+jobs:
+  build:
+    runs-on: windows-latest     # must be Windows to build a Windows exe
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Set up Python 3.12 ──────────────────────────────────────
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      # ── 3. Install dependencies ────────────────────────────────────
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller customtkinter "pygame==2.5.2" cryptography
+
+      # ── 4. Build exe ───────────────────────────────────────────────
+      - name: Build TungTungRun.exe with PyInstaller
+        run: pyinstaller TungTungRun.spec
+
+      # ── 5. Read version ────────────────────────────────────────────
+      - name: Read game version
+        id: ver
+        run: |
+          $v = (Get-Content version.txt).Trim()
+          echo "version=$v" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
+      # ── 6. Create / update GitHub Release ─────────────────────────
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ steps.ver.outputs.version }}"
+          name: "Tung Tung Sahur — RUN!  v${{ steps.ver.outputs.version }}"
+          body: |
+            Auto-built from commit `${{ github.sha }}`
+
+            ## How to use
+            Download **TungTungRun.exe** below and double-click it.
+            No Python, no installation needed.
+
+            If you already have an older launcher, it will detect this release
+            and update itself automatically on next launch.
+          files: dist/TungTungRun.exe
+          draft: false
+          prerelease: false
+          overwrite_existing_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 7. Upload build artefact (available even without a release) ─
+      - name: Upload exe as workflow artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TungTungRun-${{ steps.ver.outputs.version }}
+          path: dist/TungTungRun.exe
+          retention-days: 30
