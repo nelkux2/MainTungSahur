@@ -1,6 +1,12 @@
 # TungTungRun.spec
 import os, sys
 from PyInstaller.utils.hooks import collect_data_files, collect_all
+import glob
+
+_py_dir = os.path.dirname(sys.executable)
+_vc_dlls = glob.glob(os.path.join(_py_dir, "vcruntime*.dll"))
+extra_binaries = [(dll, ".") for dll in _vc_dlls]
+
 
 block_cipher = None
 
@@ -24,7 +30,7 @@ all_datas = ctk_datas + pygame_datas + certifi_datas + game_datas
 a = Analysis(
     ["launcher.py"],
     pathex=["."],
-    binaries=ctk_binaries,
+    binaries=ctk_binaries + extra_binaries,
     datas=all_datas,
     hiddenimports=[
         *ctk_hiddenimports,
