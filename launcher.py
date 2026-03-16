@@ -257,10 +257,40 @@ subprocess.Popen([{current_exe!r}])
     sys.exit(0)
 
 
+# ── SSL patch for self-signed game server ─────────────────────────────
+# The game server uses a self-signed cert; certifi cannot help here.
+# Patch ssl.create_default_context + install a global urllib opener so
+# every HTTPS call the game makes skips cert verification.
+
+def _patch_ssl_for_game():
+    import ssl as _ssl
+    _orig = _ssl.create_default_context
+
+    def _no_verify_ctx(*args, **kwargs):
+        ctx = _orig(*args, **kwargs)
+        ctx.check_hostname = False
+        ctx.verify_mode = _ssl.CERT_NONE
+        return ctx
+
+    _ssl.create_default_context = _no_verify_ctx
+
+    # Also install a global urllib opener with the same no-verify context
+    import urllib.request as _req
+    _plain_ctx = _ssl.SSLContext(_ssl.PROTOCOL_TLS_CLIENT)
+    _plain_ctx.check_hostname = False
+    _plain_ctx.verify_mode = _ssl.CERT_NONE
+    _req.install_opener(
+        _req.build_opener(
+            _req.HTTPSHandler(context=_plain_ctx)
+        )
+    )
+
+
 # ── Game launcher ─────────────────────────────────────────────────────
 
 def launch_game():
     """Run tung_online.main() in this process — all deps already loaded."""
+    _patch_ssl_for_game()
     os.chdir(GAME_DIR)
     if GAME_DIR not in sys.path:
         sys.path.insert(0, GAME_DIR)
